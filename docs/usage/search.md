@@ -28,7 +28,9 @@ Search is scoped to the page the user is currently viewing — **that page and e
 below it**, not the whole tree:
 
 - At the **root level** there is no open page, so the scope is the **whole tree**.
-- On a **sub-page**, only that page and its descendants are searched.
+- In **single-pane**, on a sub-page only that page and its descendants are searched.
+- In **two-pane**, the scope is the page of the **list pane (the left panel)**: a page
+  open in the detail does not narrow the scope.
 
 Each result still records its full trail from the screen root, so selecting a result can
 navigate through the whole tree even though it was found in a scoped search.

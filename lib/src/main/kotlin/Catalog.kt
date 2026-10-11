@@ -146,9 +146,10 @@ public class CatalogOptions(
  * (the breadcrumb in two-pane mode; the list header at the root, and the detail pane's
  * compact bar on a subpage, in single-pane). It is scoped to the page the user is
  * currently viewing — that page and everything below it (the whole tree at the root
- * level): while a query is entered it lists the matching pages and preference entries
- * within that scope, and selecting a result closes it and opens the page (or scrolls
- * the list to the entry's item).
+ * level): in single-pane that is the open page, in two-pane the page of the list pane
+ * (the left panel). While a query is entered it lists the matching pages and preference
+ * entries within that scope, and selecting a result closes it and opens the page (or
+ * scrolls the list to the entry's item).
  *
  * @param title Title of the screen, shown in the top bar.
  * @param root The root page: its items are the list pane's top level, and its page items
@@ -415,11 +416,23 @@ public fun Catalog(
     // The page the detail pane shows (null at the root level, where the list itself is
     // shown).
     val currentPage = selectedPageId?.let { id -> findPage(root, id) }
+    // The trail of the page the detail shows, from below the root (the pages of
+    // [pagePath] resolved to instances for their titles). Derived from the stored trail
+    // rather than re-walked, so a page hosted from several places keeps the trail it
+    // was entered from (may be stale for one frame after a navigation).
+    val currentPath: List<Page> =
+        remember(root, pagePath) { pagePath.mapNotNull { findPage(root, it) } }
+    // The page whose items fill the list pane: the selected page's parent, or the root
+    // (whose items are the list itself) while no page is selected.
+    val parentPage: Page =
+        if (currentPath.isEmpty()) root else currentPath.getOrNull(currentPath.size - 2) ?: root
     // The search is scoped to the page the user is currently viewing — its subtree,
-    // "the current level and below": the open page when one is open, the root level
-    // otherwise. Each result's trail is still computed from the screen root (see
-    // buildSearchEntries), so selecting a result navigates through the full tree.
-    val searchScopePage = currentPage ?: root
+    // "the current level and below". In single-pane that is the open page (the root
+    // level otherwise); in two-pane it is the page of the list pane (the left panel), so
+    // a page open in the detail does not narrow the scope. Each result's trail is still
+    // computed from the screen root (see buildSearchEntries), so selecting a result
+    // navigates through the full tree.
+    val searchScopePage: Page = if (isTwoPane) parentPage else currentPage ?: root
 
     // The structure (search entries + sub-page refs) is rebuilt when the tree changes or
     // when a page bumps its content version (items added or changed at runtime).
@@ -434,17 +447,6 @@ public fun Catalog(
         }
     val searchEntries =
         remember(matches, query, title) { buildSearchEntries(root, matches, query, title) }
-
-    // The trail of the page the detail shows, from below the root (the pages of
-    // [pagePath] resolved to instances for their titles). Derived from the stored trail
-    // rather than re-walked, so a page hosted from several places keeps the trail it
-    // was entered from (may be stale for one frame after a navigation).
-    val currentPath: List<Page> =
-        remember(root, pagePath) { pagePath.mapNotNull { findPage(root, it) } }
-    // The page whose items fill the list pane: the selected page's parent, or the root
-    // (whose items are the list itself) while no page is selected.
-    val parentPage: Page =
-        if (currentPath.isEmpty()) root else currentPath.getOrNull(currentPath.size - 2) ?: root
     val showBack =
         !isTwoPane &&
             destination?.pane == ListDetailPaneScaffoldRole.Detail &&
