@@ -232,10 +232,13 @@ internal fun ListPane(
     val edge = if (fadingEdges) PANE_FADING_EDGE_LENGTH else 0.dp
     // Items highlight on a search selection, and page items navigate via the callback
     // provided here: the items are composed within this scope, even though the
-    // registration itself (the lazy list scope) is not a composable context.
+    // registration itself (the lazy list scope) is not a composable context. The selected
+    // page id lets the item of the page open in the detail pane highlight itself (visible
+    // in the two-pane layout, where both panes are on screen at once).
     CompositionLocalProvider(
         LocalHighlightedItemKey provides highlightedKey,
         LocalOnSelectPage provides onSelectPage,
+        LocalSelectedPageId provides selectedPageId,
     ) {
         Box(
             Modifier
@@ -539,9 +542,12 @@ internal fun DetailPane(
     // Items highlight on a search selection, and page items navigate via the callback
     // provided here: the items are composed within this scope, even though the
     // registration itself (the lazy list scope) is not a composable context.
+    // The detail pane does not provide a selected page id: its items are the pages
+    // *below* the open one, so none of them should highlight themselves.
     CompositionLocalProvider(
         LocalHighlightedItemKey provides highlightedKey,
         LocalOnSelectPage provides onSelectPage,
+        LocalSelectedPageId provides null,
     ) {
         Box(
             Modifier

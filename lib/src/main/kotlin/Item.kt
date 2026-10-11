@@ -37,6 +37,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -170,8 +171,12 @@ public fun LazyListScope.item(
 
 /**
  * The id of the page currently open in the detail pane, so a page item can highlight
- * itself; null when no page is open. Provided by the Catalog's panes.
+ * itself; null when no page is open. Provided by the Catalog's list pane (the detail
+ * pane does not provide it, so its items never highlight themselves).
  */
+internal val LocalSelectedPageId: ProvidableCompositionLocal<String?> =
+    compositionLocalOf { null }
+
 /**
  * The navigation callback of the pane hosting a page item: invoked with the page id to
  * navigate into it. Provided by the Catalog's panes.
@@ -226,6 +231,15 @@ public fun Item(
         } else {
             onClick
         }
+    // The item of the page open in the detail pane (two-pane): the MD3 selected
+    // list-item color marks which item the detail is showing.
+    val selected = page != null && page.id == LocalSelectedPageId.current
+    val itemModifier =
+        if (selected) {
+            modifier.then(Modifier.background(MaterialTheme.colorScheme.secondaryContainer))
+        } else {
+            modifier
+        }
     BasicItem(
         textContainer = {
             val theme = LocalItemTheme.current
@@ -267,7 +281,7 @@ public fun Item(
                 }
             }
         },
-        modifier = modifier,
+        modifier = itemModifier,
         enabled = enabled,
         iconContainer = {
             if (icon != null) {
