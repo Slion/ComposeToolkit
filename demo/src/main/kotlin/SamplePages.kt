@@ -17,6 +17,7 @@
 package net.slions.compose.toolkit.demo
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -84,25 +85,20 @@ fun sampleRootPage(
         }
         section(key = "section_others", title = "Others")
         group(key = "actions_group") {
-            // Action pages: their rows carry an action, so they are never navigated to
-            // (the row shows open-in-new) and their content stays empty.
+            // Action rows: a single action, so a plain item (no page) — the open-in-new
+            // indicator (not a page-row chevron) signals they open something external.
             item(
-                page =
-                    Page(
-                        id = "settings_activity",
-                        title = "Settings",
-                        summary = "A second Catalog: its own tree and search, sharing this app's store.",
-                    ) {},
+                title = "Settings",
+                summary = "A second Catalog: its own tree and search, sharing this app's store.",
                 icon = { Icon(imageVector = Icons.Outlined.Settings, contentDescription = null) },
+                actionIcon = { Icon(imageVector = Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null) },
                 onClick = onOpenSettings,
             )
             item(
-                page =
-                    Page(
-                        id = "sheet_settings",
-                        title = "Bottom sheet",
-                        summary = "This settings tree inside a bottom sheet.",
-                    ) {},
+                title = "Bottom sheet",
+                summary = "This settings tree inside a bottom sheet.",
+                icon = { Icon(imageVector = Icons.Outlined.Settings, contentDescription = null) },
+                actionIcon = { Icon(imageVector = Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null) },
                 onClick = onOpenSheet,
             )
         }
