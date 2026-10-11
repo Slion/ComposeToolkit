@@ -33,6 +33,7 @@ import androidx.core.graphics.ColorUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import net.slions.compose.toolkit.LocalStore
 import net.slions.compose.toolkit.MutableStore
+import net.slions.compose.toolkit.PageTransition
 import net.slions.compose.toolkit.Store
 
 /**
@@ -50,6 +51,8 @@ import net.slions.compose.toolkit.Store
  * @param fontFamily one of [FONT_FAMILIES]; null = [DEFAULT_FONT].
  * @param paneGapDp the gutter between the two panes of the adaptive two-pane layout, in dp;
  *   null = [DEFAULT_PANE_GAP_DP].
+ * @param pageTransition one of [PAGE_TRANSITION_OPTIONS], the name of the preset the page
+ *   transition uses; null = [DEFAULT_PAGE_TRANSITION].
  */
 @Immutable
 data class SampleThemeValues(
@@ -60,6 +63,7 @@ data class SampleThemeValues(
     val tintFactorPercent: Int? = null,
     val fontFamily: String? = null,
     val paneGapDp: Int? = null,
+    val pageTransition: String? = null,
 ) {
     companion object {
         /** The platform default font. */
@@ -135,6 +139,23 @@ internal const val DEFAULT_TINT_FACTOR_PERCENT = 5
 /** The tint-factor range, in percent, as a slider. */
 internal val TINT_FACTOR_RANGE: IntRange = 0..50
 
+/** The default page-transition preset name. */
+internal const val DEFAULT_PAGE_TRANSITION = "Slide"
+
+/** The selectable page-transition presets, in display order. */
+internal val PAGE_TRANSITION_OPTIONS: List<String> =
+    listOf("None", "Fade", DEFAULT_PAGE_TRANSITION, "Slide & fade")
+
+/** Maps a [PAGE_TRANSITION_OPTIONS] name to its [PageTransition] preset. */
+internal fun pageTransitionOf(name: String?): PageTransition =
+    when (name) {
+        "None" -> PageTransition.None
+        "Fade" -> PageTransition.Fade
+        "Slide" -> PageTransition.Slide
+        "Slide & fade" -> PageTransition.SlideFade
+        else -> PageTransition.Slide
+    }
+
 // Item keys the theme values are persisted under. Only primitive types (Int/String) are
 // stored, matching what the default preference flow can serialize on every platform.
 private const val KEY_THEME_MODE = "sample.theme.mode"
@@ -144,6 +165,7 @@ private const val KEY_FONT_SIZE = "sample.theme.fontSize"
 private const val KEY_TINT_FACTOR = "sample.theme.tintFactor"
 private const val KEY_FONT_FAMILY = "sample.theme.fontFamily"
 private const val KEY_PANE_GAP = "sample.theme.paneGap"
+private const val KEY_PAGE_TRANSITION = "sample.theme.pageTransition"
 
 /**
  * Rebuilds a [SampleThemeValues] from a [Store] store. Unset or invalid entries fall
@@ -160,6 +182,7 @@ private fun SampleThemeValues.Companion.fromPrefs(prefs: Store): SampleThemeValu
         tintFactorPercent = prefs.getInt(KEY_TINT_FACTOR),
         fontFamily = prefs.getString(KEY_FONT_FAMILY),
         paneGapDp = prefs.getInt(KEY_PANE_GAP),
+        pageTransition = prefs.getString(KEY_PAGE_TRANSITION),
     )
 
 private fun Store.getString(key: String): String? = this[key]
@@ -175,6 +198,7 @@ private fun SampleThemeValues.writeTo(prefs: MutableStore) {
     prefs[KEY_TINT_FACTOR] = tintFactorPercent
     prefs[KEY_FONT_FAMILY] = fontFamily
     prefs[KEY_PANE_GAP] = paneGapDp
+    prefs[KEY_PAGE_TRANSITION] = pageTransition
 }
 
 /**

@@ -68,10 +68,12 @@ fun SampleApp() {
                         onBack = { (context as? Activity)?.finish() },
                         showBackButton = true,
                         // The pane gutter follows the Theme page's "Spacing" slider, so
-                        // it can be tuned (down to 0dp, flush) at runtime.
+                        // it can be tuned (down to 0dp, flush) at runtime; the page
+                        // transition follows its "Motion" selection.
                         options =
                             CatalogOptions(
                                 paneGap = (themeValues.paneGapDp ?: DEFAULT_PANE_GAP_DP).dp,
+                                pageTransition = pageTransitionOf(themeValues.pageTransition),
                             ),
                     )
                     // The sheet, hosted in this activity over the full-screen screen.

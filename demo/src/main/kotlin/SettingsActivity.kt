@@ -84,11 +84,13 @@ private fun SettingsActivityScreen(onBack: () -> Unit) {
                         // tree both close the activity.
                         onBack = onBack,
                         showBackButton = true,
-                        // Same theme-driven pane gutter as the main activity: both
-                        // Catalogs read the same store, so the slider in one updates both.
+                        // Same theme-driven pane gutter and page transition as the main
+                        // activity: both Catalogs read the same store, so the controls in
+                        // one update both.
                         options =
                             CatalogOptions(
                                 paneGap = (themeValues.paneGapDp ?: DEFAULT_PANE_GAP_DP).dp,
+                                pageTransition = pageTransitionOf(themeValues.pageTransition),
                             ),
                     )
                 }

@@ -16,9 +16,12 @@
 
 package net.slions.compose.toolkit
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -26,6 +29,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -70,6 +74,8 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalDensity
@@ -161,6 +167,87 @@ internal fun BreadcrumbBar(
 }
 
 /**
+ * Draws the content of the page a pane shows, animating the swap when [targetId]
+ * changes: the outgoing page's content ([exitingContent]) animates out while the
+ * incoming one ([enteringContent]) animates in, per [transition]. [direction] decides
+ * which side the content comes from (right when navigating deeper, left when popping
+ * up). A null [targetId] draws nothing (and animates the outgoing content out, e.g.
+ * when the detail pane closes in single-pane).
+ *
+ * The outgoing content is drawn frozen on top of the pane's surface until the
+ * transition finishes, so the swap never shows an empty pane mid-animation. The box
+ * clips the sliding content, so it never overflows onto the neighboring pane.
+ */
+@Composable
+internal fun AnimatedPageContent(
+    targetId: String?,
+    direction: PageDirection,
+    transition: PageTransition,
+    enteringContent: @Composable () -> Unit,
+    exitingContent: @Composable (id: String) -> Unit,
+) {
+    // No animation: draw the content directly (and nothing when there is none).
+    if (transition is PageTransition.None) {
+        if (targetId != null) enteringContent()
+        return
+    }
+    BoxWithConstraints(Modifier.fillMaxSize().clipToBounds()) {
+        val width = maxWidth
+        // The id fully shown (null = none); [exitingId] holds the outgoing page until
+        // the transition finishes.
+        var shownId by remember { mutableStateOf(targetId) }
+        var exitingId by remember { mutableStateOf<String?>(null) }
+        var currentDirection by remember { mutableStateOf(direction) }
+        val progress = remember { Animatable(1f) }
+
+        LaunchedEffect(targetId) {
+            if (targetId == shownId) return@LaunchedEffect
+            currentDirection = direction
+            val old = shownId
+            shownId = targetId
+            exitingId = old
+            progress.snapTo(0f)
+            progress.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(transition.durationMs, easing = transition.easing),
+            )
+            exitingId = null
+        }
+
+        val p = progress.value
+        val endpoints = transition.endpoints(currentDirection, width)
+        // Incoming: from (enterOffset, enterAlpha) to (0, 1); outgoing: from (0, 1) to
+        // (exitOffset, exitAlpha).
+        val enterOffset = endpoints.enterOffset * (1f - p)
+        val enterAlpha = endpoints.enterAlpha + (1f - endpoints.enterAlpha) * p
+        val exitOffset = endpoints.exitOffset * p
+        val exitAlpha = 1f + (endpoints.exitAlpha - 1f) * p
+
+        // The outgoing content first, so the incoming one draws on top of it.
+        exitingId?.let { id ->
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .offset(x = exitOffset)
+                    .alpha(exitAlpha),
+            ) {
+                exitingContent(id)
+            }
+        }
+        if (targetId != null) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .offset(x = enterOffset)
+                    .alpha(enterAlpha),
+            ) {
+                enteringContent()
+            }
+        }
+    }
+}
+
+/**
  * The list pane: the in-list search pill and the parent page's items — its sub-page items
  * and its regular items, in content order (the search results while querying) — and, in
  * single-pane mode, the fixed 56dp title bar the list scrolls under. At the root level
@@ -191,8 +278,15 @@ internal fun ListPane(
     listScrollToIndex: Int?,
     onListScrollConsumed: () -> Unit,
     onActive: () -> Unit,
+    pageTransition: PageTransition,
+    pageDirection: PageDirection,
+    pageFor: (String) -> Page?,
 ) {
     val listState = remember { LazyListState() }
+    // The outgoing page's list keeps the shared state's position at the moment the level
+    // changed, so the content leaving the pane does not jump during the transition.
+    val exitState = remember { LazyListState() }
+    var exitScroll by remember { mutableStateOf<Pair<Int, Int>?>(null) }
     // Keep the list pane showing the page currently open in the detail: when the parent
     // page's items change (popping up the tree in two-pane, opening a page from a search
     // result), the pane's scroll offset would otherwise be left stale — e.g. scrolled
@@ -200,6 +294,7 @@ internal fun ListPane(
     // the parent page's id (not on selectedPageId: a tap does not swap the set at the
     // root level), so only a navigation that changes the level re-triggers it.
     LaunchedEffect(parentPage.id, isSearching) {
+        exitScroll = listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset
         if (isSearching || listScrollToIndex != null) return@LaunchedEffect
         val sel = selectedPageId ?: return@LaunchedEffect
         // Item 0 is the search pill; the parent's items follow from index 1. The
@@ -228,6 +323,12 @@ internal fun ListPane(
         listState.animateScrollToItem(target)
         onListScrollConsumed()
     }
+    // Give the outgoing list the position the shared state had when the level changed
+    // (captured above, before the scroll-to-selection effect moves it).
+    LaunchedEffect(exitScroll) {
+        val scroll = exitScroll
+        if (scroll != null) exitState.requestScrollToItem(scroll.first, scroll.second)
+    }
 
     val edge = if (fadingEdges) PANE_FADING_EDGE_LENGTH else 0.dp
     // Items highlight on a search selection, and page items navigate via the callback
@@ -245,75 +346,41 @@ internal fun ListPane(
                 .fillMaxSize()
                 .onFocusChanged { if (it.isFocused) onActive() },
         ) {
-            LazyColumn(
-                state = listState,
-                // In single-pane the fixed 56dp header overlays the top of the list, so
-                // the top fade is offset down below it (and the content padded past it);
-                // in two-pane the fade sits at the very top, just below the breadcrumb.
-                modifier =
-                    if (fadingEdges) {
-                        Modifier
-                            .fillMaxSize()
-                            .paneFadingEdges(topOffset = if (isTwoPane) 0.dp else 56.dp)
-                    } else {
-                        Modifier.fillMaxSize()
-                    },
-                // Inset the content past the static fading edges so items scroll under
-                // the fades instead of ending right at the pane boundary; the fixed
-                // single-pane header bar adds to the top inset.
-                contentPadding =
-                    PaddingValues(
-                        top =
-                            if (isTwoPane) {
-                                edge
-                            } else {
-                                56.dp + edge
-                            },
-                        bottom = edge,
-                    ),
-            ) {
-                // The search pill: an in-list item at the top of the list pane.
-                // In single-pane it sits below the fixed 56dp header bar (accounted for
-                // in the content padding); in two-pane a little breathing room below
-                // the breadcrumb.
-                item {
-                    SearchPill(
+            AnimatedPageContent(
+                targetId = parentPage.id,
+                direction = pageDirection,
+                transition = pageTransition,
+                enteringContent = {
+                    ListContent(
+                        state = listState,
+                        parentPage = parentPage,
                         isTwoPane = isTwoPane,
+                        isSearching = isSearching,
+                        searchEntries = searchEntries,
+                        onSearchEntryClick = onSearchEntryClick,
                         query = query,
                         onQueryChange = onQueryChange,
-                        focusEnabled = fieldFocusEnabled,
+                        fieldFocusEnabled = fieldFocusEnabled,
+                        fadingEdges = fadingEdges,
+                        edge = edge,
                     )
-                }
-                if (isSearching) {
-                    items(searchEntries, key = { it.id }) { entry ->
-                        SearchEntryItem(
-                            // An entry match shows the preference's own title with the
-                            // page's trail as its subtitle; a page match shows the
-                            // page's title, and its parent's trail (or summary) as
-                            // subtitle.
-                            entry = entry.entry,
-                            page = entry.page,
-                            path = entry.path,
-                            icon = entry.icon,
-                            onClick = { onSearchEntryClick(entry) },
-                        )
-                    }
-                    if (searchEntries.isEmpty()) {
-                        item {
-                            Text(
-                                text = "No matching pages",
-                                modifier = Modifier.padding(16.dp),
-                            )
-                        }
-                    }
-                } else {
-                    // The parent page's items: its sub-page items and its regular items,
-                    // in content order. Each sub-page item is its own lazy item — not one
-                    // group item — so the pane can scroll to the selected item (e.g. after
-                    // popping up the tree in two-pane, when the item set changes).
-                    GroupKeys.reset()
-                    parentPage.content(this)
-                }
+                },
+            ) { id ->
+                // The outgoing level's items, frozen while they leave the pane.
+                val page = pageFor(id) ?: return@AnimatedPageContent
+                ListContent(
+                    state = exitState,
+                    parentPage = page,
+                    isTwoPane = isTwoPane,
+                    isSearching = isSearching,
+                    searchEntries = searchEntries,
+                    onSearchEntryClick = onSearchEntryClick,
+                    query = query,
+                    onQueryChange = onQueryChange,
+                    fieldFocusEnabled = fieldFocusEnabled,
+                    fadingEdges = fadingEdges,
+                    edge = edge,
+                )
             }
             // The single persistent header: a fixed 56dp bar at the top that never
             // vanishes and never changes — just the title at a single size. The search
@@ -359,6 +426,92 @@ internal fun ListPane(
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * The list pane's scrollable content: the search pill, then either the search results
+ * (while querying) or [parentPage]'s items in content order. Each sub-page item is its
+ * own lazy item — not one group item — so the pane can scroll to the selected item
+ * (e.g. after popping up the tree in two-pane, when the item set changes).
+ */
+@Composable
+private fun ListContent(
+    state: LazyListState,
+    parentPage: Page,
+    isTwoPane: Boolean,
+    isSearching: Boolean,
+    searchEntries: List<SearchEntry>,
+    onSearchEntryClick: (SearchEntry) -> Unit,
+    query: String,
+    onQueryChange: (String) -> Unit,
+    fieldFocusEnabled: Boolean,
+    fadingEdges: Boolean,
+    edge: Dp,
+) {
+    LazyColumn(
+        state = state,
+        // In single-pane the fixed 56dp header overlays the top of the list, so the top
+        // fade is offset down below it (and the content padded past it); in two-pane the
+        // fade sits at the very top, just below the breadcrumb.
+        modifier =
+            if (fadingEdges) {
+                Modifier
+                    .fillMaxSize()
+                    .paneFadingEdges(topOffset = if (isTwoPane) 0.dp else 56.dp)
+            } else {
+                Modifier.fillMaxSize()
+            },
+        // Inset the content past the static fading edges so items scroll under the fades
+        // instead of ending right at the pane boundary; the fixed single-pane header bar
+        // adds to the top inset.
+        contentPadding =
+            PaddingValues(
+                top =
+                    if (isTwoPane) {
+                        edge
+                    } else {
+                        56.dp + edge
+                    },
+                bottom = edge,
+            ),
+    ) {
+        // The search pill: an in-list item at the top of the list pane. In single-pane it
+        // sits below the fixed 56dp header bar (accounted for in the content padding); in
+        // two-pane a little breathing room below the breadcrumb.
+        item {
+            SearchPill(
+                isTwoPane = isTwoPane,
+                query = query,
+                onQueryChange = onQueryChange,
+                focusEnabled = fieldFocusEnabled,
+            )
+        }
+        if (isSearching) {
+            items(searchEntries, key = { it.id }) { entry ->
+                SearchEntryItem(
+                    // An entry match shows the preference's own title with the page's
+                    // trail as its subtitle; a page match shows the page's title, and its
+                    // parent's trail (or summary) as subtitle.
+                    entry = entry.entry,
+                    page = entry.page,
+                    path = entry.path,
+                    icon = entry.icon,
+                    onClick = { onSearchEntryClick(entry) },
+                )
+            }
+            if (searchEntries.isEmpty()) {
+                item {
+                    Text(
+                        text = "No matching pages",
+                        modifier = Modifier.padding(16.dp),
+                    )
+                }
+            }
+        } else {
+            GroupKeys.reset()
+            parentPage.content(this)
         }
     }
 }
@@ -522,16 +675,31 @@ internal fun DetailPane(
     scrollToIndex: Int?,
     onDetailScrollConsumed: () -> Unit,
     onActive: () -> Unit,
+    pageTransition: PageTransition,
+    pageDirection: PageDirection,
+    pageFor: (String) -> Page?,
 ) {
-    if (page == null) return
     val detailState = rememberLazyListState()
-    LaunchedEffect(page.id) {
+    // The outgoing page's list keeps the shared state's position at the moment the page
+    // changed, so the content leaving the pane does not jump during the transition.
+    val exitState = rememberLazyListState()
+    var exitScroll by remember { mutableStateOf<Pair<Int, Int>?>(null) }
+    LaunchedEffect(page?.id) {
+        val id = page?.id ?: return@LaunchedEffect
+        exitScroll = detailState.firstVisibleItemIndex to detailState.firstVisibleItemScrollOffset
         detailState.scrollToItem(0)
+    }
+    // Give the outgoing list the position the shared state had when the page changed
+    // (captured above, before the reset to the top).
+    LaunchedEffect(exitScroll) {
+        val scroll = exitScroll
+        if (scroll != null) exitState.requestScrollToItem(scroll.first, scroll.second)
     }
     // Scroll to the item a search result navigated to, once the page's list is composed
     // (the detail pane is composed asynchronously, so wait for it to be laid out with
     // enough items first).
-    LaunchedEffect(page.id, scrollToIndex) {
+    LaunchedEffect(page?.id, scrollToIndex) {
+        if (page == null) return@LaunchedEffect
         val target = scrollToIndex ?: return@LaunchedEffect
         snapshotFlow { detailState.layoutInfo.totalItemsCount }
             .first { it > target }
@@ -554,40 +722,19 @@ internal fun DetailPane(
                 .fillMaxSize()
                 .onFocusChanged { if (it.isFocused) onActive() },
         ) {
-            LazyColumn(
-                state = detailState,
-                // In single-pane the compact bar overlays the top of the list, so the
-                // top fade is offset down below it; in two-pane there is no bar, so the
-                // fade sits at the very top, just below the breadcrumb.
-                modifier =
-                    if (fadingEdges) {
-                        Modifier
-                            .fillMaxSize()
-                            .paneFadingEdges(topOffset = if (showBack) 56.dp else 0.dp)
-                    } else {
-                        Modifier.fillMaxSize()
-                    },
-                // The compact bar overlays the top of the list and is always visible in
-                // single-pane (where the back arrow lives); inset the first item by the
-                // bar's height so the page's first item — e.g. its top category header —
-                // isn't hidden beneath it. The top and bottom insets also keep the
-                // content clear of the static fading edges so items scroll under them.
-                contentPadding =
-                    PaddingValues(
-                        top =
-                            if (showBack) {
-                                56.dp + edge
-                            } else {
-                                edge
-                            },
-                        bottom = edge,
-                    ),
-            ) {
-                // The page's items: its sub-page items and its regular items, in content
-                // order; tapping a sub-page item navigates deeper into the tree (the
-                // list pane switches to that page's items).
-                GroupKeys.reset()
-                page.content(this)
+            AnimatedPageContent(
+                targetId = page?.id,
+                direction = pageDirection,
+                transition = pageTransition,
+                enteringContent = {
+                    page?.let { p ->
+                        DetailListContent(p, detailState, showBack, fadingEdges, edge)
+                    }
+                },
+            ) { id ->
+                // The outgoing page's items, frozen while they leave the pane.
+                val p = pageFor(id) ?: return@AnimatedPageContent
+                DetailListContent(p, exitState, showBack, fadingEdges, edge)
             }
             // The compact bar: declared after the list so it draws above the content.
             // Static — always shown in full whenever the detail page is open in
@@ -595,7 +742,7 @@ internal fun DetailPane(
             // provides the separation). In two-pane mode it is never shown: the
             // breadcrumb above the panes already names the page, so the bar would only
             // duplicate it.
-            if (showBack) {
+            if (showBack && page != null) {
                 Surface(
                     modifier =
                         Modifier
@@ -625,6 +772,53 @@ internal fun DetailPane(
                 }
             }
         }
+    }
+}
+
+/**
+ * The detail pane's scrollable content: [page]'s items — its sub-page items and its
+ * regular items, in content order; tapping a sub-page item navigates deeper into the tree
+ * (the list pane switches to that page's items).
+ */
+@Composable
+private fun DetailListContent(
+    page: Page,
+    state: LazyListState,
+    showBack: Boolean,
+    fadingEdges: Boolean,
+    edge: Dp,
+) {
+    LazyColumn(
+        state = state,
+        // In single-pane the compact bar overlays the top of the list, so the top fade is
+        // offset down below it; in two-pane there is no bar, so the fade sits at the very
+        // top, just below the breadcrumb.
+        modifier =
+            if (fadingEdges) {
+                Modifier
+                    .fillMaxSize()
+                    .paneFadingEdges(topOffset = if (showBack) 56.dp else 0.dp)
+            } else {
+                Modifier.fillMaxSize()
+            },
+        // The compact bar overlays the top of the list and is always visible in single-pane
+        // (where the back arrow lives); inset the first item by the bar's height so the
+        // page's first item — e.g. its top category header — isn't hidden beneath it. The
+        // top and bottom insets also keep the content clear of the static fading edges so
+        // items scroll under them.
+        contentPadding =
+            PaddingValues(
+                top =
+                    if (showBack) {
+                        56.dp + edge
+                    } else {
+                        edge
+                    },
+                bottom = edge,
+            ),
+    ) {
+        GroupKeys.reset()
+        page.content(this)
     }
 }
 

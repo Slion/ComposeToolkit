@@ -150,6 +150,21 @@ fun themePage(
                 )
             }
         }
+
+        section(key = "theme_motion_category", title = "Motion")
+        group(key = "theme_motion_group") {
+            item(title = "Transition", summary = values.pageTransition ?: DEFAULT_PAGE_TRANSITION) {
+                ItemList(
+                    value = values.pageTransition ?: DEFAULT_PAGE_TRANSITION,
+                    onValueChange = { onValuesChange(values.copy(pageTransition = it)) },
+                    values = PAGE_TRANSITION_OPTIONS,
+                    title = "Transition",
+                    summary = values.pageTransition ?: DEFAULT_PAGE_TRANSITION,
+                    icon = { MaterialSymbol.Outlined(icon = "animation") },
+                    valueToText = { AnnotatedString(it) },
+                )
+            }
+        }
     }
 }
 

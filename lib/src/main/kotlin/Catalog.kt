@@ -118,6 +118,15 @@ public class CatalogOptions(
      * other (the items keep their own 16dp edge padding).
      */
     public val paneGap: Dp = 24.dp,
+    /**
+     * How the panes animate when the shown page changes (the detail pane when another
+     * page is opened, the list pane when the shown level changes, and the pane swap in
+     * single-pane layouts). The direction of a direction-aware transition is derived
+     * from the navigation trail: content slides in from the right when navigating
+     * deeper, from the left when popping up. [PageTransition.None] restores the instant
+     * swap.
+     */
+    public val pageTransition: PageTransition = PageTransition.Slide,
 )
 
 /**
@@ -248,6 +257,9 @@ public fun Catalog(
     // Survives rotation so a later grow to two-pane can refill the detail pane; a pure
     // rotation round trip on a fresh launch must stay at the root level.
     var userSelectedPage by rememberSaveable { mutableStateOf(false) }
+    // The direction of the navigation in flight (for the page transition): deeper (or a
+    // same-level switch) reads as forward, popping up as backward.
+    var pageDirection by remember { mutableStateOf(PageDirection.Forward) }
     // The ids from below the root down to the page (empty = the root level): the root
     // is the screen itself, so it is never part of the navigation trail.
     fun pathOf(pageId: String): List<String> =
@@ -257,6 +269,9 @@ public fun Catalog(
     // lives) rather than re-derived from the tree, so a page hosted from several
     // places is entered where the user tapped it.
     fun selectPageById(pageId: String, trail: List<String>) {
+        // Deeper (or a same-level switch) is forward; a shorter trail pops up.
+        pageDirection =
+            if (trail.size >= pagePath.size) PageDirection.Forward else PageDirection.Backward
         userSelectedPage = true
         pagePath = trail
         scope.launch {
@@ -267,6 +282,8 @@ public fun Catalog(
         }
     }
     fun navigateToPath(id: List<String>) {
+        pageDirection =
+            if (id.size >= pagePath.size) PageDirection.Forward else PageDirection.Backward
         // An empty path means "back to the root list" (breadcrumb at the top level),
         // which is not a selection: forget the flag so size round trips stay at the
         // root.
@@ -286,6 +303,7 @@ public fun Catalog(
     suspend fun popToRootList() =
         guardedNavigation {
             navigator.navigateBack()
+            pageDirection = PageDirection.Backward
             pagePath = emptyList()
             userSelectedPage = false
         }
@@ -560,6 +578,11 @@ public fun Catalog(
                             listScrollToIndex = listScrollToIndex,
                             onListScrollConsumed = { listScrollToIndex = null },
                             onActive = { onPaneActive(ActivePane.List) },
+                            pageTransition = options.pageTransition,
+                            pageDirection = pageDirection,
+                            // Resolves the outgoing page while the transition draws it:
+                            // the same canonical instance the panes show.
+                            pageFor = { id -> findPage(root, id) },
                         )
                     }
                 },
@@ -586,6 +609,9 @@ public fun Catalog(
                             scrollToIndex = scrollToIndex,
                             onDetailScrollConsumed = { scrollToIndex = null },
                             onActive = { onPaneActive(ActivePane.Detail) },
+                            pageTransition = options.pageTransition,
+                            pageDirection = pageDirection,
+                            pageFor = { id -> findPage(root, id) },
                         )
                     }
                 },

@@ -18,6 +18,28 @@ class CatalogOptions {
   +hingePolicy: HingePolicy
   +twoPanesOnMediumWidth: Boolean
   +fadingEdges: Boolean
+  +paneGap: Dp
+  +pageTransition: PageTransition
+}
+
+class PageTransition {
+  <<sealed>>
+  None / Fade / Slide / SlideFade
+  +durationMs: Int
+  +easing: Easing
+  endpoints(direction, width)*
+  Custom(durationMs, easing, transform)
+}
+class PageDirection {
+  <<enum>>
+  Forward / Backward
+}
+class PageTransitionEndpoints {
+  <<data>>
+  +enterOffset: Dp
+  +enterAlpha: Float
+  +exitOffset: Dp
+  +exitAlpha: Float
 }
 
 class ScreenAdaptive {
@@ -234,6 +256,9 @@ MutableMapStore --|> MutableStore
 Catalog --> Page : root
 Catalog --> CatalogOptions : options
 CatalogOptions --> HingePolicy : hingePolicy
+CatalogOptions --> PageTransition : pageTransition
+PageTransition --> PageDirection : endpoints(direction, width)
+PageTransition --> PageTransitionEndpoints : endpoints()
 Catalog ..> ScreenAdaptive : remembers
 Catalog ..> ItemTheme : consumes
 Catalog ..> SearchIndex : builds

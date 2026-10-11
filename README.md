@@ -149,7 +149,7 @@ If AndroidX DataStore is considered more appropriate for your use case, e.g. you
 ```kotlin
 Catalog(
     title = "Settings",
-    pages = pages,
+    root = rootPage,
     onBack = { dismiss() },
 )
 ```
@@ -157,9 +157,23 @@ Catalog(
 - **Single-pane** (narrow window, e.g. a phone in portrait): selecting a page navigates to the detail pane; the top bar shows the page title with a back arrow, and system back pops the detail before dismissing the screen.
 - **Two-pane** (wide window, e.g. a tablet or an unfolded foldable): both panes are visible at once as a 50/50 split.
 - The **list pane** shows an MD3-style search pill. While a query is entered, the page list is replaced by the matching pages and preference entries; selecting a result clears the query, opens the page, and scrolls to (briefly highlights) the matched item.
-- The **root of the tree** hosts regular items in addition to the page items: pass `rootContent` to `Catalog` to draw them below the top-level pages (any `LazyListScope` item builder works, as in a page's `content`; the items are searchable). Bump a page's `contentVersion` or the screen's `rootContentVersion` when items change at runtime so the search index is rebuilt.
+- Like any page, the **root of the tree** hosts regular items in addition to the page items: declare them in the root `Page`'s `content` and they are drawn below the top-level pages (any `LazyListScope` item builder works, and the items are searchable). Bump a page's `contentVersion` when its items change at runtime so the search index is rebuilt.
 
 The screen follows the [Material 3 adaptive](https://developer.android.com/develop/ui/compose/m3/adaptive) layout, so the same code adapts across postures. It also handles **half-folded** foldables (the two panes stay exactly half each via `HingePolicy.NeverAvoid`) and **medium-width** windows (the detail pane activates there, not only at the 720dp "Expanded" class).
+
+### Page transitions
+
+When the shown page changes, each pane animates its content swap using the `PageTransition` in [`CatalogOptions`](lib/src/main/kotlin/Catalog.kt) (default: `PageTransition.Slide`). The direction is derived from the navigation: going deeper, the content slides in from the right and the outgoing content exits to the left; popping up (back arrow, breadcrumb, system back) mirrors that. The outgoing content stays visible, frozen at its scroll position, until the animation finishes, so the panes never flicker empty.
+
+```kotlin
+Catalog(
+    title = "Settings",
+    root = rootPage,
+    options = CatalogOptions(pageTransition = PageTransition.SlideFade),
+)
+```
+
+The built-in presets are `PageTransition.None` (instant swap, the pre-animation behavior), `Fade`, `Slide`, and `SlideFade`. Any other motion can be supplied with `PageTransition.Custom(durationMs, easing, transform)`, where `transform` resolves a [`PageTransitionEndpoints`](lib/src/main/kotlin/PageTransition.kt) — the incoming content's start offset/alpha and the outgoing content's end offset/alpha — for the navigation direction and the pane's width.
 
 ### Nested pages
 
@@ -186,7 +200,7 @@ The tree and search helpers live in [`Page.kt`](lib/src/main/kotlin/Page.kt): `w
 ```kotlin
 Catalog(
     title = "Settings",
-    pages = pages,
+    root = rootPage,
     adaptiveInfo = hostAdaptiveInfo, // host-measured, no hinges
     singlePaneOnly = true,           // a sheet never splits into list + detail
 )
@@ -196,7 +210,7 @@ Set `singlePaneOnly = true` for hosts that must never split into a list + detail
 
 ## Device-UI tests
 
-The `sample` app doubles as the test fixture for the library's screen behavior. A small device-UI suite, built on the [AutoTest](https://github.com/Slion/AutoTest) framework, drives the installed sample over adb and asserts on the live UI hierarchy — nested navigation, breadcrumbs, bottom-sheet single-pane hosting, and search. See [`tools/autotest/`](tools/autotest/README.md) for setup and how to run it.
+The `demo` app doubles as the test fixture for the library's screen behavior. A small device-UI suite, built on the [AutoTest](https://github.com/Slion/AutoTest) framework, drives the installed sample over adb and asserts on the live UI hierarchy — nested navigation, breadcrumbs, bottom-sheet single-pane hosting, and search. See [`tools/autotest/`](tools/autotest/README.md) for setup and how to run it.
 
 ## Credits
 
