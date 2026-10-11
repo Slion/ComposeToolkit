@@ -37,7 +37,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -251,8 +250,11 @@ internal fun AnimatedPageContent(
  * The list pane: the in-list search pill and the parent page's items — its sub-page items
  * and its regular items, in content order (the search results while querying) — and, in
  * single-pane mode, the fixed 56dp title bar the list scrolls under. At the root level
- * the parent is the root page, whose items are the list's top level. Owns the pane's
- * [LazyListState] and its scroll-to-selection effects.
+ * the parent is the root page, whose items are the list's top level. Each level's list
+ * uses its own [LazyListState] from [scrollStates] (owned by the screen), so a level
+ * always comes back at the scroll position it was left at; the first time a level is
+ * shown, the list scrolls to the selected page's item instead. The search results use
+ * their own throwaway state, so clearing a query returns the level where it was.
  *
  * The search pill's text field is kept out of the focus tree while [fieldFocusEnabled]
  * is false (launch and pane transitions), so the focus system never restores focus (and
@@ -281,24 +283,33 @@ internal fun ListPane(
     pageTransition: PageTransition,
     pageDirection: PageDirection,
     pageFor: (String) -> Page?,
+    scrollStates: MutableMap<String, LazyListState>,
+    visitedLevels: MutableSet<String>,
 ) {
-    val listState = remember { LazyListState() }
-    // The outgoing page's list keeps the shared state's position at the moment the level
-    // changed, so the content leaving the pane does not jump during the transition.
-    val exitState = remember { LazyListState() }
-    var exitScroll by remember { mutableStateOf<Pair<Int, Int>?>(null) }
-    // Keep the list pane showing the page currently open in the detail: when the parent
-    // page's items change (popping up the tree in two-pane, opening a page from a search
-    // result), the pane's scroll offset would otherwise be left stale — e.g. scrolled
-    // past the end of a new, shorter list, with the selected item out of view. Keyed on
-    // the parent page's id (not on selectedPageId: a tap does not swap the set at the
-    // root level), so only a navigation that changes the level re-triggers it.
+    // The list of this level: each level keeps its own state in [scrollStates] (owned by
+    // the screen, so it survives the pane leaving the composition in single-pane mode).
+    // Composing the level's list with its state restores the level's scroll position when
+    // the user comes back (clamped when the level's items shrank); a level never shown
+    // before starts at the top. The search results use their own throwaway state: they
+    // don't belong to any level's position, so clearing a query returns the level exactly
+    // where it was.
+    val levelState =
+        remember(parentPage.id) { scrollStates.getOrPut(parentPage.id) { LazyListState() } }
+    val searchState = remember { LazyListState() }
+    val listState = if (isSearching) searchState else levelState
+    // First visit to this level: keep the list pane showing the page currently open in
+    // the detail — without this, the offset would be left stale (e.g. scrolled past the
+    // end of a shorter list, with the selected item out of view). On a revisit the level's
+    // state already holds the position the user left it at, so leave it alone. (The level
+    // is marked visited even when a search result selected an item in it: that scroll
+    // then owns the position.)
     LaunchedEffect(parentPage.id, isSearching) {
-        exitScroll = listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset
-        if (isSearching || listScrollToIndex != null) return@LaunchedEffect
+        if (isSearching) return@LaunchedEffect
+        val firstVisit = visitedLevels.add(parentPage.id)
+        if (!firstVisit || listScrollToIndex != null) return@LaunchedEffect
         val sel = selectedPageId ?: return@LaunchedEffect
-        // Item 0 is the search pill; the parent's items follow from index 1. The
-        // selected item's position in the parent's lazy list comes from the walk.
+        // Item 0 is the search pill; the parent's items follow from index 1. The selected
+        // item's position in the parent's lazy list comes from the walk.
         val index =
             parentPage.structure.subPages.firstOrNull { it.page.id == sel }?.index
                 ?: return@LaunchedEffect
@@ -306,14 +317,14 @@ internal fun ListPane(
         val target = 1 + index
         // The list is recomposed with the new items asynchronously; wait until the target
         // item exists before scrolling to it (same pattern as the detail pane).
-        snapshotFlow { listState.layoutInfo.totalItemsCount }
+        snapshotFlow { levelState.layoutInfo.totalItemsCount }
             .first { it > target }
         // No-op when the item is already on screen, so a restart never fights a scroll
         // the user is in the middle of.
-        if (listState.layoutInfo.visibleItemsInfo.any { it.index == target }) {
+        if (levelState.layoutInfo.visibleItemsInfo.any { it.index == target }) {
             return@LaunchedEffect
         }
-        listState.animateScrollToItem(target)
+        levelState.animateScrollToItem(target)
     }
     // Scroll to a root item a search result selected, once it is laid out.
     LaunchedEffect(listScrollToIndex) {
@@ -322,12 +333,6 @@ internal fun ListPane(
             .first { it > target }
         listState.animateScrollToItem(target)
         onListScrollConsumed()
-    }
-    // Give the outgoing list the position the shared state had when the level changed
-    // (captured above, before the scroll-to-selection effect moves it).
-    LaunchedEffect(exitScroll) {
-        val scroll = exitScroll
-        if (scroll != null) exitState.requestScrollToItem(scroll.first, scroll.second)
     }
 
     val edge = if (fadingEdges) PANE_FADING_EDGE_LENGTH else 0.dp
@@ -366,10 +371,11 @@ internal fun ListPane(
                     )
                 },
             ) { id ->
-                // The outgoing level's items, frozen while they leave the pane.
+                // The outgoing level's items, frozen while they leave the pane, in the
+                // level's own state — so they stay at the level's scroll position.
                 val page = pageFor(id) ?: return@AnimatedPageContent
                 ListContent(
-                    state = exitState,
+                    state = scrollStates[id] ?: LazyListState(),
                     parentPage = page,
                     isTwoPane = isTwoPane,
                     isSearching = isSearching,
@@ -659,9 +665,10 @@ private fun SearchPill(
 /**
  * The detail pane: the selected page's items — its sub-page items and its regular items,
  * in content order — and, in single-pane mode, the fixed 56dp compact bar (back arrow +
- * title) the list scrolls under. Owns the pane's [LazyListState] (shared across pages,
- * so a page change starts at the top) and the scroll-to-item effect for a selected search
- * result.
+ * title) the list scrolls under. Each page's list uses its own [LazyListState] from
+ * [scrollStates] (owned by the screen), so a page always comes back at the scroll
+ * position it was left at (clamped when its items shrank; the top when it has not been
+ * shown before), plus the scroll-to-item effect for a selected search result.
  */
 @Composable
 internal fun DetailPane(
@@ -678,32 +685,25 @@ internal fun DetailPane(
     pageTransition: PageTransition,
     pageDirection: PageDirection,
     pageFor: (String) -> Page?,
+    scrollStates: MutableMap<String, LazyListState>,
 ) {
-    val detailState = rememberLazyListState()
-    // The outgoing page's list keeps the shared state's position at the moment the page
-    // changed, so the content leaving the pane does not jump during the transition.
-    val exitState = rememberLazyListState()
-    var exitScroll by remember { mutableStateOf<Pair<Int, Int>?>(null) }
-    LaunchedEffect(page?.id) {
-        val id = page?.id ?: return@LaunchedEffect
-        exitScroll = detailState.firstVisibleItemIndex to detailState.firstVisibleItemScrollOffset
-        detailState.scrollToItem(0)
-    }
-    // Give the outgoing list the position the shared state had when the page changed
-    // (captured above, before the reset to the top).
-    LaunchedEffect(exitScroll) {
-        val scroll = exitScroll
-        if (scroll != null) exitState.requestScrollToItem(scroll.first, scroll.second)
-    }
+    // The list of the current page: each page keeps its own state in [scrollStates]
+    // (owned by the screen, so it survives the pane leaving the composition in
+    // single-pane mode). Composing the page's list with its state restores the page's
+    // scroll position when the user comes back (clamped when the page's items shrank);
+    // a page never shown before starts at the top.
+    val pageId = page?.id
+    val detailState =
+        remember(pageId) { pageId?.let { scrollStates.getOrPut(it) { LazyListState() } } }
     // Scroll to the item a search result navigated to, once the page's list is composed
     // (the detail pane is composed asynchronously, so wait for it to be laid out with
     // enough items first).
     LaunchedEffect(page?.id, scrollToIndex) {
-        if (page == null) return@LaunchedEffect
+        val state = detailState ?: return@LaunchedEffect
         val target = scrollToIndex ?: return@LaunchedEffect
-        snapshotFlow { detailState.layoutInfo.totalItemsCount }
+        snapshotFlow { state.layoutInfo.totalItemsCount }
             .first { it > target }
-        detailState.animateScrollToItem(target)
+        state.animateScrollToItem(target)
         onDetailScrollConsumed()
     }
     val edge = if (fadingEdges) PANE_FADING_EDGE_LENGTH else 0.dp
@@ -728,13 +728,16 @@ internal fun DetailPane(
                 transition = pageTransition,
                 enteringContent = {
                     page?.let { p ->
-                        DetailListContent(p, detailState, showBack, fadingEdges, edge)
+                        detailState?.let { state ->
+                            DetailListContent(p, state, showBack, fadingEdges, edge)
+                        }
                     }
                 },
             ) { id ->
-                // The outgoing page's items, frozen while they leave the pane.
+                // The outgoing page's items, frozen while they leave the pane, in the
+                // page's own state — so they stay at the page's scroll position.
                 val p = pageFor(id) ?: return@AnimatedPageContent
-                DetailListContent(p, exitState, showBack, fadingEdges, edge)
+                DetailListContent(p, scrollStates[id] ?: LazyListState(), showBack, fadingEdges, edge)
             }
             // The compact bar: declared after the list so it draws above the content.
             // Static — always shown in full whenever the detail page is open in

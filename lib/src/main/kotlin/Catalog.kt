@@ -17,6 +17,7 @@
 package net.slions.compose.toolkit
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.systemBarsPadding
@@ -369,6 +370,19 @@ public fun Catalog(
     // The preference item a search result navigated to is highlighted briefly, so the
     // user can find it in the opened page (mirrors the launcher settings behavior).
     var highlightedKey by remember { mutableStateOf<String?>(null) }
+    // The scroll state of every page a pane has shown, keyed by page id (one map per
+    // pane: the list levels' lists carry the search pill, so their item indices differ
+    // from the detail pages'). Owned here — not by the panes — because in single-pane
+    // mode the panes leave the composition when the other is shown, so a pane-local map
+    // would lose the states on the very navigation they are meant to survive. Each page's
+    // list is composed with its own state, so a page always comes back at the scroll
+    // position it was left at (clamped when its items shrank).
+    val listScrollStates = remember { mutableMapOf<String, LazyListState>() }
+    val detailScrollStates = remember { mutableMapOf<String, LazyListState>() }
+    // The list levels already shown: the first time a level is shown, the list scrolls
+    // to the selected page's item; on a revisit the level's state already holds the
+    // position the user left it at, so the list is left alone.
+    val visitedListLevels = remember { mutableSetOf<String>() }
     LaunchedEffect(highlightedKey) {
         if (highlightedKey != null) {
             delay(HIGHLIGHT_DURATION_MS)
@@ -583,6 +597,8 @@ public fun Catalog(
                             // Resolves the outgoing page while the transition draws it:
                             // the same canonical instance the panes show.
                             pageFor = { id -> findPage(root, id) },
+                            scrollStates = listScrollStates,
+                            visitedLevels = visitedListLevels,
                         )
                     }
                 },
@@ -612,6 +628,7 @@ public fun Catalog(
                             pageTransition = options.pageTransition,
                             pageDirection = pageDirection,
                             pageFor = { id -> findPage(root, id) },
+                            scrollStates = detailScrollStates,
                         )
                     }
                 },

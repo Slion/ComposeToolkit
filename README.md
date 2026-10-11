@@ -163,7 +163,7 @@ The screen follows the [Material 3 adaptive](https://developer.android.com/devel
 
 ### Page transitions
 
-When the shown page changes, each pane animates its content swap using the `PageTransition` in [`CatalogOptions`](lib/src/main/kotlin/Catalog.kt) (default: `PageTransition.Slide`). The direction is derived from the navigation: going deeper, the content slides in from the right and the outgoing content exits to the left; popping up (back arrow, breadcrumb, system back) mirrors that. The outgoing content stays visible, frozen at its scroll position, until the animation finishes, so the panes never flicker empty.
+When the shown page changes, each pane animates its content swap using the `PageTransition` in [`CatalogOptions`](lib/src/main/kotlin/Catalog.kt) (default: `PageTransition.Slide`). The direction is derived from the navigation: going deeper, the content slides in from the right and the outgoing content exits to the left; popping up (back arrow, breadcrumb, system back) mirrors that. The outgoing content stays visible, frozen at its scroll position, until the animation finishes, so the panes never flicker empty. Going back or forward restores each page to the scroll position it was left at (a page never shown before starts at the top).
 
 ```kotlin
 Catalog(

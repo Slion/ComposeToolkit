@@ -68,6 +68,14 @@ at the scroll position it had when the navigation happened — until the animati
 finishes, so a pane never flickers empty and the two lists don't jump. The pane clips the
 sliding content, so it never overflows onto the neighboring pane.
 
+## Scroll position
+
+Pages remember where the user left them. When a page leaves a pane its scroll position
+(item index + offset) is saved, and when it comes back — in either direction, in
+single-pane and two-pane mode alike — the pane restores that position instead of starting
+at the top. A page that has never been shown starts at the top (the list pane scrolls to
+the selected page's item in that case, as before).
+
 ## Changing it at runtime
 
 `pageTransition` is read from the options at composition time, so it can be driven by any
