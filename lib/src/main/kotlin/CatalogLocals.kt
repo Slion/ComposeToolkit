@@ -20,15 +20,22 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import kotlinx.coroutines.flow.MutableStateFlow
 
+/**
+ * Provides the [Catalog]'s two locals: the [LocalStore] the items read their state from
+ * (a default, disk-backed store when null) and the [LocalItemTheme] they are styled with.
+ *
+ * @param flow The store flow the items read their state from.
+ * @param theme The item theme the items are styled with.
+ */
 @Composable
-public fun ProvidePreferenceLocals(
+public fun ProvideCatalogLocals(
     flow: MutableStateFlow<Store> = createDefaultStore(),
-    theme: PreferenceTheme = preferenceTheme(),
+    theme: ItemTheme = itemTheme(),
     content: @Composable () -> Unit,
 ) {
     CompositionLocalProvider(
         LocalStore provides flow,
-        LocalPreferenceTheme provides theme,
+        LocalItemTheme provides theme,
         content = content,
     )
 }

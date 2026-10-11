@@ -161,7 +161,7 @@ internal fun BreadcrumbBar(
 }
 
 /**
- * The list pane: the in-list search pill and the parent page's items — its sub-page rows
+ * The list pane: the in-list search pill and the parent page's items — its sub-page items
  * and its regular items, in content order (the search results while querying) — and, in
  * single-pane mode, the fixed 56dp title bar the list scrolls under. At the root level
  * the parent is the root page, whose items are the list's top level. Owns the pane's
@@ -196,31 +196,31 @@ internal fun ListPane(
     // Keep the list pane showing the page currently open in the detail: when the parent
     // page's items change (popping up the tree in two-pane, opening a page from a search
     // result), the pane's scroll offset would otherwise be left stale — e.g. scrolled
-    // past the end of a new, shorter list, with the selected row out of view. Keyed on
+    // past the end of a new, shorter list, with the selected item out of view. Keyed on
     // the parent page's id (not on selectedPageId: a tap does not swap the set at the
     // root level), so only a navigation that changes the level re-triggers it.
     LaunchedEffect(parentPage.id, isSearching) {
         if (isSearching || listScrollToIndex != null) return@LaunchedEffect
         val sel = selectedPageId ?: return@LaunchedEffect
         // Item 0 is the search pill; the parent's items follow from index 1. The
-        // selected row's position in the parent's lazy list comes from the walk.
+        // selected item's position in the parent's lazy list comes from the walk.
         val index =
             parentPage.structure.subPages.firstOrNull { it.page.id == sel }?.index
                 ?: return@LaunchedEffect
         // Item 0 is the search pill; the parent's items follow from index 1.
         val target = 1 + index
-        // The list is recomposed with the new rows asynchronously; wait until the target
-        // row exists before scrolling to it (same pattern as the detail pane).
+        // The list is recomposed with the new items asynchronously; wait until the target
+        // item exists before scrolling to it (same pattern as the detail pane).
         snapshotFlow { listState.layoutInfo.totalItemsCount }
             .first { it > target }
-        // No-op when the row is already on screen, so a restart never fights a scroll
+        // No-op when the item is already on screen, so a restart never fights a scroll
         // the user is in the middle of.
         if (listState.layoutInfo.visibleItemsInfo.any { it.index == target }) {
             return@LaunchedEffect
         }
         listState.animateScrollToItem(target)
     }
-    // Scroll to a root row a search result selected, once it is laid out.
+    // Scroll to a root item a search result selected, once it is laid out.
     LaunchedEffect(listScrollToIndex) {
         val target = listScrollToIndex ?: return@LaunchedEffect
         snapshotFlow { listState.layoutInfo.totalItemsCount }
@@ -230,7 +230,7 @@ internal fun ListPane(
     }
 
     val edge = if (fadingEdges) PANE_FADING_EDGE_LENGTH else 0.dp
-    // Rows highlight on a search selection, and page rows navigate via the callback
+    // Items highlight on a search selection, and page items navigate via the callback
     // provided here: the items are composed within this scope, even though the
     // registration itself (the lazy list scope) is not a composable context.
     CompositionLocalProvider(
@@ -283,7 +283,7 @@ internal fun ListPane(
                 }
                 if (isSearching) {
                     items(searchEntries, key = { it.id }) { entry ->
-                        SearchEntryRow(
+                        SearchEntryItem(
                             // An entry match shows the preference's own title with the
                             // page's trail as its subtitle; a page match shows the
                             // page's title, and its parent's trail (or summary) as
@@ -304,10 +304,10 @@ internal fun ListPane(
                         }
                     }
                 } else {
-                    // The parent page's items: its sub-page rows and its regular items,
-                    // in content order. Each sub-page row is its own lazy item — not one
-                    // group item — so the pane can scroll to the selected row (e.g. after
-                    // popping up the tree in two-pane, when the row set changes).
+                    // The parent page's items: its sub-page items and its regular items,
+                    // in content order. Each sub-page item is its own lazy item — not one
+                    // group item — so the pane can scroll to the selected item (e.g. after
+                    // popping up the tree in two-pane, when the item set changes).
                     GroupKeys.reset()
                     parentPage.content(this)
                 }
@@ -414,7 +414,7 @@ private fun SearchPill(
                 Modifier
                     .fillMaxWidth()
                     .height(48.dp)
-                    .padding(horizontal = LocalPreferenceTheme.current.horizontalSpacing),
+                    .padding(horizontal = LocalItemTheme.current.horizontalSpacing),
             shape = RoundedCornerShape(24.dp),
             color = MaterialTheme.colorScheme.surfaceVariant,
         ) {
@@ -424,7 +424,7 @@ private fun SearchPill(
             ) {
                 Box(
                     // A fixed-width tappable slot; the icon is centered in it, so its
-                    // edge lands 16.dp from the pill edge (8.dp row padding + 8.dp
+                    // edge lands 16.dp from the pill edge (8.dp pill padding + 8.dp
                     // within the slot).
                     modifier =
                         Modifier
@@ -501,10 +501,10 @@ private fun SearchPill(
 }
 
 /**
- * The detail pane: the selected page's items — its sub-page rows and its regular items,
+ * The detail pane: the selected page's items — its sub-page items and its regular items,
  * in content order — and, in single-pane mode, the fixed 56dp compact bar (back arrow +
  * title) the list scrolls under. Owns the pane's [LazyListState] (shared across pages,
- * so a page change starts at the top) and the scroll-to-row effect for a selected search
+ * so a page change starts at the top) and the scroll-to-item effect for a selected search
  * result.
  */
 @Composable
@@ -525,7 +525,7 @@ internal fun DetailPane(
     LaunchedEffect(page.id) {
         detailState.scrollToItem(0)
     }
-    // Scroll to the row a search result navigated to, once the page's list is composed
+    // Scroll to the item a search result navigated to, once the page's list is composed
     // (the detail pane is composed asynchronously, so wait for it to be laid out with
     // enough items first).
     LaunchedEffect(page.id, scrollToIndex) {
@@ -536,7 +536,7 @@ internal fun DetailPane(
         onDetailScrollConsumed()
     }
     val edge = if (fadingEdges) PANE_FADING_EDGE_LENGTH else 0.dp
-    // Rows highlight on a search selection, and page rows navigate via the callback
+    // Items highlight on a search selection, and page items navigate via the callback
     // provided here: the items are composed within this scope, even though the
     // registration itself (the lazy list scope) is not a composable context.
     CompositionLocalProvider(
@@ -563,7 +563,7 @@ internal fun DetailPane(
                     },
                 // The compact bar overlays the top of the list and is always visible in
                 // single-pane (where the back arrow lives); inset the first item by the
-                // bar's height so the page's first row — e.g. its top category header —
+                // bar's height so the page's first item — e.g. its top category header —
                 // isn't hidden beneath it. The top and bottom insets also keep the
                 // content clear of the static fading edges so items scroll under them.
                 contentPadding =
@@ -577,8 +577,8 @@ internal fun DetailPane(
                         bottom = edge,
                     ),
             ) {
-                // The page's items: its sub-page rows and its regular items, in content
-                // order; tapping a sub-page row navigates deeper into the tree (the
+                // The page's items: its sub-page items and its regular items, in content
+                // order; tapping a sub-page item navigates deeper into the tree (the
                 // list pane switches to that page's items).
                 GroupKeys.reset()
                 page.content(this)
@@ -623,7 +623,7 @@ internal fun DetailPane(
 }
 
 /**
- * One search result row, styled as an MD3 [ListItem] (as in the material3 search bar
+ * One search result item, styled as an MD3 [ListItem] (as in the material3 search bar
  * samples): a leading search icon, the entry's title, and a supporting line naming where
  * the page lives in the tree. A page-level match (no [entry]) shows the page's own title
  * in the headline, so the supporting line is the trail of the page's *parent* (the
@@ -632,7 +632,7 @@ internal fun DetailPane(
  * parent; its summary is shown instead.
  */
 @Composable
-private fun SearchEntryRow(
+private fun SearchEntryItem(
     entry: SearchIndexEntry?,
     page: Page?,
     path: String,
@@ -661,14 +661,14 @@ private fun SearchEntryRow(
             }
         },
         leadingContent = {
-            // The row's own leading icon (the page row's for a page match), so a
-            // result looks like its row; the search icon for rows without one.
-            // Vertical placement is material3's: centered, or top-aligned for a
-            // row whose supporting text wraps to several lines (a three-line
+            // The item's own leading icon (the page item's for a page match), so a
+            // result looks like its item; the search icon for items without one.
+            // Vertical placement is material3's: centered, or top-aligned for an
+            // item whose supporting text wraps to several lines (a three-line
             // list item).
-            val rowIcon = entry?.icon ?: icon ?: page?.icon
-            if (rowIcon != null) {
-                rowIcon()
+            val itemIcon = entry?.icon ?: icon ?: page?.icon
+            if (itemIcon != null) {
+                itemIcon()
             } else {
                 Icon(imageVector = Icons.Filled.Search, contentDescription = null)
             }

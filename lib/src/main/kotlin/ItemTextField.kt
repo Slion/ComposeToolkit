@@ -60,12 +60,12 @@ public inline fun <T> LazyListScope.itemTextField(
         ItemTextFieldDefaults.TextField,
 ) {
     // The icon depends on the value, which is only known in composition: the result
-    // row re-reads the row's (store-backed) state to render it with the current value.
+    // item re-reads the item's (store-backed) state to render it with the current value.
     SearchIndexer.record(
         key,
         title,
         staticSummary,
-        icon?.let { rowIcon -> @Composable { rowIcon(rememberState().value) } },
+        icon?.let { itemIcon -> @Composable { itemIcon(rememberState().value) } },
     )
     item(key = key, contentType = "ItemTextField") {
         val state = rememberState()

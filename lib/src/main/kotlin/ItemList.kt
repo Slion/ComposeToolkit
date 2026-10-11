@@ -55,15 +55,15 @@ public enum class ItemListType {
 }
 
 /**
- * Adds a list preference row to the lazy list, whose state is remembered by [key].
+ * Adds a list preference item to the lazy list, whose state is remembered by [key].
  *
- * @param key The lazy list key of the row, and the preference state key.
+ * @param key The lazy list key of the item, and the preference state key.
  * @param defaultValue The initial selected value.
  * @param values The values the user can choose from.
- * @param title The title of the row. Also used as the row's search text.
- * @param modifier Modifier applied to the row.
- * @param rememberState How the row's state is remembered.
- * @param enabled Whether the row is enabled, based on the current value.
+ * @param title The title of the item. Also used as the item's search text.
+ * @param modifier Modifier applied to the item.
+ * @param rememberState How the item's state is remembered.
+ * @param enabled Whether the item is enabled, based on the current value.
  * @param icon The leading icon, based on the current value.
  * @param summary The summary text, based on the current value.
  * @param staticSummary A static summary used in the [buildSearchIndex] index.
@@ -90,12 +90,12 @@ public inline fun <T> LazyListScope.itemList(
         ItemListDefaults.item(type, valueToText),
 ) {
     // The icon depends on the value, which is only known in composition: the result
-    // row re-reads the row's (store-backed) state to render it with the current value.
+    // item re-reads the item's (store-backed) state to render it with the current value.
     SearchIndexer.record(
         key,
         title,
         staticSummary,
-        icon?.let { rowIcon -> @Composable { rowIcon(rememberState().value) } },
+        icon?.let { itemIcon -> @Composable { itemIcon(rememberState().value) } },
     )
     item(key = key, contentType = "ItemList") {
         val state = rememberState()
@@ -116,15 +116,15 @@ public inline fun <T> LazyListScope.itemList(
 }
 
 /**
- * Adds a list preference row to the lazy list, whose value is controlled by the caller.
+ * Adds a list preference item to the lazy list, whose value is controlled by the caller.
  *
- * @param key The lazy list key of the row.
+ * @param key The lazy list key of the item.
  * @param value The current selected value.
  * @param onValueChange Called when a new value is selected.
  * @param values The values the user can choose from.
- * @param title The title of the row. Also used as the row's search text.
- * @param modifier Modifier applied to the row.
- * @param enabled Whether the row is enabled.
+ * @param title The title of the item. Also used as the item's search text.
+ * @param modifier Modifier applied to the item.
+ * @param enabled Whether the item is enabled.
  * @param icon The leading icon.
  * @param summary The summary text, based on the current value.
  * @param staticSummary A static summary used in the [buildSearchIndex] index.
@@ -240,7 +240,7 @@ public fun <T> ItemList(
                 }
             }
             ItemListType.DROPDOWN_MENU -> {
-                val theme = LocalPreferenceTheme.current
+                val theme = LocalItemTheme.current
                 Box(
                     modifier = Modifier.fillMaxWidth().padding(theme.padding.copy(vertical = 0.dp))
                 ) {

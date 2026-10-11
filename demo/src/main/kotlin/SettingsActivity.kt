@@ -26,8 +26,8 @@ import androidx.compose.ui.unit.dp
 import net.slions.compose.toolkit.Catalog
 import net.slions.compose.toolkit.CatalogOptions
 import net.slions.compose.toolkit.Page
-import net.slions.compose.toolkit.ProvidePreferenceLocals
-import net.slions.compose.toolkit.ProvidePreferenceTheme
+import net.slions.compose.toolkit.ProvideCatalogLocals
+import net.slions.compose.toolkit.ProvideItemTheme
 import net.slions.compose.toolkit.item
 
 /**
@@ -55,14 +55,14 @@ private fun SettingsActivityScreen(onBack: () -> Unit) {
     // The default flow is process-global, so this Catalog and the main activity's Catalog
     // observe the same store: the theme set here re-themes the main activity when it
     // returns, even though the two Catalogs are otherwise unrelated.
-    ProvidePreferenceLocals {
+    ProvideCatalogLocals {
         val (themeValues, writeThemeValues) = rememberSampleThemeValues()
         val darkTheme = effectiveDarkTheme(themeValues.themeMode, isSystemInDarkTheme())
         // Resolved here (in the composable scope) and passed to the plain page builder.
         val defaultAccent = systemDefaultAccentColor(darkTheme)
         CompositionLocalProvider(LocalSampleThemeValues provides themeValues) {
             SampleTheme(darkTheme = darkTheme) {
-                ProvidePreferenceTheme {
+                ProvideItemTheme {
                     Catalog(
                         title = "Settings",
                         // A wrapper root holding the theme as its only page row: a

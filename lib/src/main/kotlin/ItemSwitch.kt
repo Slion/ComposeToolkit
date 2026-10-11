@@ -30,14 +30,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 
 /**
- * Adds a switch preference row to the lazy list, whose state is remembered by [key].
+ * Adds a switch preference item to the lazy list, whose state is remembered by [key].
  *
- * @param key The lazy list key of the row, and the preference state key.
+ * @param key The lazy list key of the item, and the preference state key.
  * @param defaultValue The initial value of the switch.
- * @param title The title of the row. Also used as the row's search text.
- * @param modifier Modifier applied to the row.
- * @param rememberState How the row's state is remembered.
- * @param enabled Whether the row is enabled, based on the current value.
+ * @param title The title of the item. Also used as the item's search text.
+ * @param modifier Modifier applied to the item.
+ * @param rememberState How the item's state is remembered.
+ * @param enabled Whether the item is enabled, based on the current value.
  * @param icon The leading icon, based on the current value.
  * @param summary The summary text, based on the current value.
  * @param staticSummary A static summary used in the [buildSearchIndex] index.
@@ -56,12 +56,12 @@ public inline fun LazyListScope.itemSwitch(
     staticSummary: String? = null,
 ) {
     // The icon depends on the value, which is only known in composition: the result
-    // row re-reads the row's (store-backed) state to render it with the current value.
+    // item re-reads the item's (store-backed) state to render it with the current value.
     SearchIndexer.record(
         key,
         title,
         staticSummary,
-        icon?.let { rowIcon -> @Composable { rowIcon(rememberState().value) } },
+        icon?.let { itemIcon -> @Composable { itemIcon(rememberState().value) } },
     )
     item(key = key, contentType = "ItemSwitch") {
         val state = rememberState()
@@ -78,14 +78,14 @@ public inline fun LazyListScope.itemSwitch(
 }
 
 /**
- * Adds a switch preference row to the lazy list, whose value is controlled by the caller.
+ * Adds a switch preference item to the lazy list, whose value is controlled by the caller.
  *
- * @param key The lazy list key of the row.
+ * @param key The lazy list key of the item.
  * @param value The current value of the switch.
  * @param onValueChange Called when the switch is toggled.
- * @param title The title of the row. Also used as the row's search text.
- * @param modifier Modifier applied to the row.
- * @param enabled Whether the row is enabled.
+ * @param title The title of the item. Also used as the item's search text.
+ * @param modifier Modifier applied to the item.
+ * @param enabled Whether the item is enabled.
  * @param icon The leading icon.
  * @param summary The summary text.
  * @param staticSummary A static summary used in the [buildSearchIndex] index. If null,
@@ -117,12 +117,12 @@ public fun LazyListScope.itemSwitch(
 }
 
 /**
- * A switch preference row, whose state is a [MutableState].
+ * A switch preference item, whose state is a [MutableState].
  *
  * @param state The state of the switch.
- * @param title The title of the row.
- * @param modifier Modifier applied to the row.
- * @param enabled Whether the row is enabled.
+ * @param title The title of the item.
+ * @param modifier Modifier applied to the item.
+ * @param enabled Whether the item is enabled.
  * @param icon The leading icon.
  * @param summary The summary text, based on the current value.
  */
@@ -164,7 +164,7 @@ public fun ItemSwitch(
         icon = icon,
         summary = summary,
         widgetContainer = {
-            val theme = LocalPreferenceTheme.current
+            val theme = LocalItemTheme.current
             Switch(
                 checked = value,
                 onCheckedChange = null,

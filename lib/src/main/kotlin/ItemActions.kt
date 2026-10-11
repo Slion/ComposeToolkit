@@ -70,7 +70,7 @@ public fun ItemActions(
         icon = icon,
         summary = summary,
         widgetContainer = {
-            val theme = LocalPreferenceTheme.current
+            val theme = LocalItemTheme.current
             Row(
                 modifier = Modifier.padding(start = theme.horizontalSpacing),
                 verticalAlignment = Alignment.CenterVertically,

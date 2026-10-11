@@ -50,8 +50,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.lazy.LazyListScope
 import net.slions.compose.toolkit.Page
 import net.slions.compose.toolkit.Catalog
-import net.slions.compose.toolkit.ProvidePreferenceLocals
-import net.slions.compose.toolkit.ProvidePreferenceTheme
+import net.slions.compose.toolkit.ProvideCatalogLocals
+import net.slions.compose.toolkit.ProvideItemTheme
 import net.slions.compose.toolkit.item
 import net.slions.compose.toolkit.windowAdaptiveInfoFor
 
@@ -79,9 +79,9 @@ fun SheetSettings(
     onDismiss: () -> Unit,
     maxWidth: Dp = DEFAULT_MAX_SHEET_WIDTH,
 ) {
-    ProvidePreferenceLocals {
+    ProvideCatalogLocals {
         val context = LocalContext.current
-        ProvidePreferenceTheme {
+        ProvideItemTheme {
             DraggableBottomSheet(onDismiss, maxWidth) { size ->
                 SheetSettingsScreen(
                     root =

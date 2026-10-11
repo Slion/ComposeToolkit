@@ -42,8 +42,8 @@ import androidx.compose.ui.unit.dp
 /**
  * Style of a card.
  *
- * A card is a *style*, not a container: it is applied to a row ([item] with [style]) or to the
- * rows of a group ([group] with [style]), never built as a separate logical thing.
+ * A card is a *style*, not a container: it is applied to an item ([item] with [style]) or to the
+ * items of a group ([group] with [style]), never built as a separate logical thing.
  */
 public sealed class CardStyle {
     /** A filled card (Material Design 3 [Card]) with [CardDefaults.cardColors]. */
@@ -57,8 +57,8 @@ public sealed class CardStyle {
      * [CardDefaults.outlinedCardColors]. */
     public object Outlined : CardStyle()
 
-    /** No card at all: the rows are drawn plainly (a group keeps its spacing and outer
-     * clearance, and [item] keeps its standard row). */
+    /** No card at all: the items are drawn plainly (a group keeps its spacing and outer
+     * clearance, and [item] keeps its standard rendering). */
     public object None : CardStyle()
 }
 
@@ -123,31 +123,31 @@ internal fun CardSurface(
 
 /** A single item of a [group], as built with [GroupScope.item]. */
 public data class GroupItem(
-    /** The title of the row; also the search text of the item. */
+    /** The title of the item; also the search text of the item. */
     public val title: String,
-    /** Optional summary text of the row, used to index it. */
+    /** Optional summary text of the item, used to index it. */
     public val summary: String?,
     /** The page the item opens; when non-null the item registers the child-page reference
      * (and is not indexed for search, as the page itself is searchable). */
     public val page: Page? = null,
-    /** The leading icon of a data row. If null, [page]'s icon is used. */
+    /** The leading icon of a data item. If null, [page]'s icon is used. */
     public val icon: @Composable (() -> Unit)? = null,
-    /** The trailing action icon of a data row. If null, [page]'s default is used (for a
-     * page row, the navigation chevron). */
+    /** The trailing action icon of a data item. If null, [page]'s default is used (for a
+     * page item, the navigation chevron). */
     public val actionIcon: @Composable (() -> Unit)? = null,
-    /** The trailing widget of a data row (e.g. a switch or checkbox). */
+    /** The trailing widget of a data item (e.g. a switch or checkbox). */
     public val widgetContainer: @Composable (() -> Unit)? = null,
-    /** Whether a data row is enabled. */
+    /** Whether a data item is enabled. */
     public val enabled: Boolean = true,
     /**
-     * The click action of a data row; for a page row, when null the row navigates into
+     * The click action of a data item; for a page item, when null the item navigates into
      * [page], and when set the trailing chevron becomes the page's own tap target.
      */
     public val onClick: (() -> Unit)? = null,
     /**
      * The composable content drawn inside the item's card. When null, the item renders the
-     * standard row from its data ([title], [summary], [page], [icon], [widgetContainer],
-     * [enabled], [onClick]) — for a page row that is exactly the [item] row.
+     * standard item from its data ([title], [summary], [page], [icon], [widgetContainer],
+     * [enabled], [onClick]) — for a page item that is exactly the [item] rendering.
      */
     public val content: (@Composable () -> Unit)? = null,
 )
@@ -162,28 +162,28 @@ public class GroupScope {
     /**
      * Adds an item to the group; it is drawn in its own card.
      *
-     * With [page], the item is a page row, like [item] in a page's content: it registers the
+     * With [page], the item is a page item, like [item] in a page's content: it registers the
      * child-page reference (so the page joins the tree), is not indexed for search (the page
      * itself is searchable in its own right), and [title]/[summary]/[icon] default to the
      * page's.
      *
-     * When [content] is null the item renders the standard row from its data (the [item] row);
-     * when set, [content] is drawn inside the card instead, and [title]/[summary] describe the
-     * row for search indexing (the content is composable and not walked by
-     * [buildSearchIndex], so the row's own text cannot be read automatically). Pass the same
-     * title/summary the row displays.
+     * When [content] is null the item renders the standard item from its data (the [item]
+     * rendering); when set, [content] is drawn inside the card instead, and [title]/[summary]
+     * describe the item for search indexing (the content is composable and not walked by
+     * [buildSearchIndex], so the item's own text cannot be read automatically). Pass the same
+     * title/summary the item displays.
      *
-     * @param page The page the item opens; when null, the item is a regular preference row.
-     * @param title Title of the row. If null, [page]'s title is used.
-     * @param summary Summary of the row. If null, [page]'s summary is used.
+     * @param page The page the item opens; when null, the item is a regular preference item.
+     * @param title Title of the item. If null, [page]'s title is used.
+     * @param summary Summary of the item. If null, [page]'s summary is used.
      * @param icon Icon to draw next to the text. If null, [page]'s icon is used.
      * @param actionIcon The trailing action icon. If null, [page]'s default is used.
-     * @param widgetContainer Container to draw at the end of the preference row.
-     * @param enabled Whether the row is enabled.
-     * @param onClick Callback invoked when the row is clicked; for a page row, when null the
-     *   row navigates into [page].
+     * @param widgetContainer Container to draw at the end of the preference item.
+     * @param enabled Whether the item is enabled.
+     * @param onClick Callback invoked when the item is clicked; for a page item, when null the
+     *   item navigates into [page].
      * @param content Composable content drawn inside the item's card. If null, the standard
-     *   row is rendered from the item's data.
+     *   item is rendered from the item's data.
      */
     public fun item(
         page: Page? = null,
@@ -216,7 +216,7 @@ public class GroupScope {
  * Renders a group of items, each drawn in its own Material Design 3 card of [style],
  * separated by [itemSpacing]. The first item shows rounded top corners, the last item shows
  * rounded bottom corners, and middle items have square corners, giving the impression of a
- * single card split into individual rows. With [CardStyle.None], the items are drawn
+ * single card split into individual items. With [CardStyle.None], the items are drawn
  * plainly, without a card.
  *
  * @param style Style of the individual cards.
@@ -226,7 +226,7 @@ public class GroupScope {
  * @param cardColor Card background color. If null, the default container color of [style] is
  * used.
  * @param outerPadding Clearance between the group and its container. If null,
- * `PreferenceTheme.horizontalSpacing` is used on all sides.
+ * `ItemTheme.horizontalSpacing` is used on all sides.
  * @param items The pre-built items of the group, as produced by [GroupScope].
  */
 @Composable
@@ -239,7 +239,7 @@ public fun Group(
     outerPadding: PaddingValues? = null,
     items: List<GroupItem>,
 ) {
-    val outer = outerPadding ?: PaddingValues(LocalPreferenceTheme.current.horizontalSpacing)
+    val outer = outerPadding ?: PaddingValues(LocalItemTheme.current.horizontalSpacing)
     val last = items.size - 1
     Column(
         modifier = modifier
@@ -251,7 +251,7 @@ public fun Group(
             GroupCard(
                 item = item,
                 style = style,
-                shape = rowShape(shape, index, last),
+                shape = itemShape(shape, index, last),
                 cardColor = cardColor,
             )
         }
@@ -259,11 +259,11 @@ public fun Group(
 }
 
 /**
- * The shape of the card of the [index]-th row of a group of [last + 1] rows: rounded top
+ * The shape of the card of the [index]-th item of a group of [last + 1] items: rounded top
  * corners on the first, rounded bottom corners on the last, and square corners in between.
  */
 @Composable
-private fun rowShape(shape: Shape?, index: Int, last: Int): Shape {
+private fun itemShape(shape: Shape?, index: Int, last: Int): Shape {
     val cardShape = shape ?: MaterialTheme.shapes.medium
     val cornerSize =
         (cardShape as? RoundedCornerShape ?: RoundedCornerShape(12.dp)).topStart
@@ -277,7 +277,7 @@ private fun rowShape(shape: Shape?, index: Int, last: Int): Shape {
 }
 
 /**
- * Draws a single group row: [item]'s content (or its standard row) in a card of [style] and
+ * Draws a single group item: [item]'s content (or its standard item) in a card of [style] and
  * [shape] — or plainly, without a card, when [style] is [CardStyle.None].
  */
 @Composable
@@ -316,7 +316,7 @@ internal fun GroupCard(
  *
  * Reset at the start of every build (composition or search index walk), so that an auto base
  * key is unique between the groups of a page, stable across recompositions, and identical
- * across the two builds (a search entry's key must match the composed row's key to
+ * across the two builds (a search entry's key must match the composed item's key to
  * highlight it).
  */
 internal object GroupKeys {
@@ -341,10 +341,10 @@ internal object GroupKeys {
  * @param cardColor Card background color. If null, the default container color of [style] is
  * used.
  * @param outerPadding Clearance between the group and its container. If null,
- * `PreferenceTheme.horizontalSpacing` is used on all sides.
+ * `ItemTheme.horizontalSpacing` is used on all sides.
  * @param content Content of the group. Use [GroupScope.item] to add items. The content is
  * built eagerly (not composed) so that [buildSearchIndex] can read each item's title/summary
- * and index the group's rows.
+ * and index the group's items.
  */
 public fun LazyListScope.group(
     key: String? = null,
@@ -356,32 +356,32 @@ public fun LazyListScope.group(
     outerPadding: PaddingValues? = null,
     content: GroupScope.() -> Unit,
 ) {
-    // Runs the content (a plain data builder, not composable) before registering the rows, so
-    // each row is recorded with its own lazy list index — search can scroll to and highlight
-    // the specific row, not just the group. A stable base key (generated when the caller
-    // passes none) prefixes each row's key.
+    // Runs the content (a plain data builder, not composable) before registering the items, so
+    // each item is recorded with its own lazy list index — search can scroll to and highlight
+    // the specific item, not just the group. A stable base key (generated when the caller
+    // passes none) prefixes each item's key.
     val scope = GroupScope()
     scope.content()
     val items = scope.items
     val baseKey = key ?: "group:${GroupKeys.next()}"
     val last = items.size - 1
     items.forEachIndexed { index, item ->
-        val rowKey = "$baseKey:$index"
+        val itemKey = "$baseKey:$index"
         when {
             // A page card: registers the child-page reference (with the action that
             // replaces navigation, if any); no search entry, as the page itself is
             // searchable in its own right.
             item.page != null ->
-                SearchIndexer.recordSubPage(item.page, rowKey, item.icon ?: item.page?.icon)
+                SearchIndexer.recordSubPage(item.page, itemKey, item.icon ?: item.page?.icon)
             // A preference card: searchable entry, keyed.
-            else -> SearchIndexer.record(rowKey, item.title, item.summary, item.icon)
+            else -> SearchIndexer.record(itemKey, item.title, item.summary, item.icon)
         }
         val isLast = index == last
-        item(key = rowKey, contentType = "GroupItem") {
+        item(key = itemKey, contentType = "GroupItem") {
             // Read in the composable scope: the theme and layout direction are composition locals.
-            val outer = outerPadding ?: PaddingValues(LocalPreferenceTheme.current.horizontalSpacing)
+            val outer = outerPadding ?: PaddingValues(LocalItemTheme.current.horizontalSpacing)
             val layoutDirection = LocalLayoutDirection.current
-            val rowPadding =
+            val itemPadding =
                 PaddingValues(
                     start = outer.calculateLeftPadding(layoutDirection),
                     top = if (index == 0) outer.calculateTopPadding() else 0.dp,
@@ -394,13 +394,13 @@ public fun LazyListScope.group(
                 modifier =
                     modifier
                         .fillMaxWidth()
-                        .then(highlightedKeyModifier(rowKey))
-                        .padding(rowPadding),
+                        .then(highlightedKeyModifier(itemKey))
+                        .padding(itemPadding),
             ) {
                 GroupCard(
                     item = item,
                     style = style,
-                    shape = rowShape(shape, index, last),
+                    shape = itemShape(shape, index, last),
                     cardColor = cardColor,
                 )
             }

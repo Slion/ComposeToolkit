@@ -23,9 +23,9 @@ import androidx.compose.runtime.Composable
  * A settings page: an id, a title, and its items.
  *
  * A page is just a collection of items: any of the library's `*Item` / `section` /
- * `card` builders, in any order, plus [item] rows with a [Page] that reference child
+ * `card` builders, in any order, plus [item] items with a [Page] that reference child
  * pages (the way a page opens its children). The tree can nest to any depth. An id
- * names a page: the same page may be hosted from several places in the tree (its rows
+ * names a page: the same page may be hosted from several places in the tree (its items
  * are aliases, and the page is indexed and searchable once), but two distinct pages
  * must have distinct ids (a collision is a programming error, checked when the tree is
  * walked).
@@ -60,7 +60,7 @@ public data class Page(
     internal val structure: PageStructure by lazy { walkPageContent(this) }
 
     /**
-     * The child pages referenced by [content] via a page row ([item] with a [Page], or a
+     * The child pages referenced by [content] via a page item ([item] with a [Page], or a
      * [group] item with a [Page]), in content order.
      */
     internal val childPages: List<Page>
@@ -71,7 +71,7 @@ public data class Page(
  * Depth-first traversal of the page tree rooted at this page, in declaration order: one
  * trail per page instance, each the chain of pages from the top level down to (and
  * including) that instance. A page id may appear in several trails when the same page is
- * hosted from several places (its rows are aliases of one page); the ids of *different*
+ * hosted from several places (its items are aliases of one page); the ids of *different*
  * pages must be distinct, which is checked here (the same id always names the same page,
  * so its title must match across instances).
  */
@@ -81,7 +81,7 @@ internal fun Page.walkPageTrails(): List<List<Page>> {
     fun visit(page: Page, trail: List<Page>) {
         // The same id names one page: two instances with the same id must be the same
         // page, or a typo'd id would silently shadow one of them (the shadowed page
-        // would never appear in search and its rows would navigate to the other one).
+        // would never appear in search and its items would navigate to the other one).
         val seen = titlesById[page.id]
         if (seen == null) {
             titlesById[page.id] = page.title
@@ -144,7 +144,7 @@ public fun findPagePath(root: Page, id: String): List<Page>? =
  *
  * @property pageMatched True when the page's own title or summary contains the query. The
  * result can also come from matching entries alone, in which case the page itself is not
- * a match and its row must not be shown.
+ * a match and its item must not be shown.
  */
 public data class PageMatch(
     public val page: Page,

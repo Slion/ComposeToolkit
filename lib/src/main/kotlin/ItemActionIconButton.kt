@@ -68,7 +68,7 @@ public fun ItemActionIconButton(
     ItemActions(
         title = title,
         secondTarget = {
-            val theme = LocalPreferenceTheme.current
+            val theme = LocalItemTheme.current
             IconButton(
                 onClick = onIconButtonClick,
                 modifier =

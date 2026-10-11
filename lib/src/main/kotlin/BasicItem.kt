@@ -40,35 +40,35 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 
 /**
- * The `key` of the preference row that should currently be highlighted (tinted with the theme's
- * `primaryContainer`), or null when no row is highlighted.
+ * The `key` of the preference item that should currently be highlighted (tinted with the theme's
+ * `primaryContainer`), or null when no item is highlighted.
  *
  * Hosts (e.g. a search that navigates to a page) provide this for the duration of the highlight;
- * every preference row reads it and highlights itself when its lazy list key matches.
+ * every preference item reads it and highlights itself when its lazy list key matches.
  */
 public val LocalHighlightedItemKey: ProvidableCompositionLocal<String?> =
     compositionLocalOf { null }
 
 /**
- * A [Modifier] that highlights the preference row when its lazy list `key` matches
- * [LocalHighlightedItemKey]: the row is tinted with the theme's `primaryContainer` color
+ * A [Modifier] that highlights the preference item when its lazy list `key` matches
+ * [LocalHighlightedItemKey]: the item is tinted with the theme's `primaryContainer` color
  * and flashed with a translucent [androidx.compose.material3.MaterialTheme.colorScheme.primary]
  * overlay that fades smoothly in and out several times (a gentle pulse), so it stands out
  * while the list scrolls to it.
  *
- * Every lazy `*Item` extension applies this to its row, so a host can highlight a single
- * row (e.g. the entry a search navigated to) by providing [LocalHighlightedItemKey] with
- * the row's key for a short duration.
+ * Every lazy `*Item` extension applies this to its item, so a host can highlight a single
+ * item (e.g. the entry a search navigated to) by providing [LocalHighlightedItemKey] with
+ * the item's key for a short duration.
  */
 @Composable
 public fun highlightedKeyModifier(key: String?): Modifier {
     if (key != LocalHighlightedItemKey.current) return Modifier
-    // The highlighted row takes focus: the search field is unfocused, the keyboard
-    // closes, and on d-pad and TV the focus ring lands on the row as well.
+    // The highlighted item takes focus: the search field is unfocused, the keyboard
+    // closes, and on d-pad and TV the focus ring lands on the item as well.
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
     // The static tint alone is easy to miss while the list is still scrolling, so the
-    // row also pulses with a smooth fade in and out when the highlight starts. Both the
+    // item also pulses with a smooth fade in and out when the highlight starts. Both the
     // tint and the flash are driven by [Animatable]s and are guaranteed to reach fully
     // transparent before the host clears the highlight, so the highlight always lifts
     // smoothly instead of being cut off mid-animation.
@@ -76,7 +76,7 @@ public fun highlightedKeyModifier(key: String?): Modifier {
     val flash = remember { Animatable(0f) }
     val tintColor = MaterialTheme.colorScheme.primaryContainer
     val flashColor = MaterialTheme.colorScheme.primary
-    // How many times the row pulses (fades in and then out) while it is highlighted.
+    // How many times the item pulses (fades in and then out) while it is highlighted.
     val pulseCount = 2
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
@@ -86,8 +86,8 @@ public fun highlightedKeyModifier(key: String?): Modifier {
         // eases up from rest to a low peak and eases back down to rest with no hard snap
         // at either end. The curve is sampled into keyframes (linear fill) so it plays as
         // one slow, smooth breath rather than two separate tweens. The peak is kept low
-        // on purpose: the flash is a subtle glow that tints the row, not a wash that covers
-        // the row's content. The pulse repeats [pulseCount] times so the row keeps
+        // on purpose: the flash is a subtle glow that tints the item, not a wash that covers
+        // the item's content. The pulse repeats [pulseCount] times so the item keeps
         // standing out while the list scrolls to it.
         val pulse =
             keyframes {
@@ -103,7 +103,7 @@ public fun highlightedKeyModifier(key: String?): Modifier {
                 0f at 1400
             }
         repeat(pulseCount) { flash.animateTo(targetValue = 0f, animationSpec = pulse) }
-        // After the last pulse, ease the row's tint out to fully transparent so the
+        // After the last pulse, ease the item's tint out to fully transparent so the
         // highlight fades away rather than popping the moment the host clears the key.
         tint.animateTo(0f, tween(600, easing = FastOutSlowInEasing))
     }
@@ -111,7 +111,7 @@ public fun highlightedKeyModifier(key: String?): Modifier {
         .focusable()
         .focusRequester(focusRequester)
         .drawWithContent {
-            // The tint is a *background* for the row: draw it first so the row's own
+            // The tint is a *background* for the item: draw it first so the item's own
             // content (text, icon, widget) stays visible on top of it.
             if (tint.value > 0f) drawRect(color = tintColor.copy(alpha = tint.value))
             drawContent()
@@ -144,16 +144,16 @@ public fun LazyListScope.basicItem(
 }
 
 /**
- * A basic preference row: an icon, a text block, an action icon, and a widget, laid out in a
- * single row.
+ * A basic preference item: an icon, a text block, an action icon, and a widget, laid out
+ * in a single line.
  *
  * @param textContainer The title and (optionally) summary block.
- * @param modifier Modifier applied to the row.
+ * @param modifier Modifier applied to the item.
  * @param enabled Whether the preference is enabled.
  * @param iconContainer The leading icon.
  * @param actionIconContainer The action icon, shown just before the widget.
  * @param widgetContainer The trailing widget (e.g. a switch or checkbox).
- * @param onClick Click handler; when null, the row is not clickable.
+ * @param onClick Click handler; when null, the item is not clickable.
  */
 @Composable
 public fun BasicItem(

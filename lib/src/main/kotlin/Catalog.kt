@@ -52,7 +52,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
- * How long a search-selected preference row stays highlighted in the detail pane. This must be
+ * How long a search-selected preference item stays highlighted in the detail pane. This must be
  * long enough for the highlight animation (pulses + tint fade-out) to fully finish and return to
  * transparent before the key is cleared, otherwise the highlight is cut off mid-animation.
  */
@@ -68,10 +68,10 @@ private const val FIELD_FOCUS_SETTLE_MS = 400L
 private enum class ActivePane { List, Detail }
 
 /**
- * A search result row: a page (optionally nested; [path] names its trail as titles, e.g.
- * "Nested > Advanced" — the screen title for the root page's rows) and, for an entry
+ * A search result item: a page (optionally nested; [path] names its trail as titles, e.g.
+ * "Nested > Advanced" — the screen title for the root page's items) and, for an entry
  * match, the [entry] of the page. [trail] is the same trail as page ids below the root:
- * selecting the row enters the page through it (a page hosted from several places is
+ * selecting the item enters the page through it (a page hosted from several places is
  * entered where the result found it).
  */
 internal data class SearchEntry(
@@ -81,8 +81,8 @@ internal data class SearchEntry(
     val trail: List<String>,
     val entry: SearchIndexEntry?,
     /**
-     * The leading icon of the page's row, for a page-level match (a preference entry's
-     * row icon lives on [entry]); null when the row has no icon.
+     * The leading icon of the page's item, for a page-level match (a preference entry's
+     * item icon lives on [entry]); null when the item has no icon.
      */
     val icon: @Composable (() -> Unit)? = null,
 )
@@ -115,7 +115,7 @@ public class CatalogOptions(
     /**
      * The gutter between the two panes in the two-pane layout. The material3 recommended
      * directives carry a 24dp spacer there; 0.dp makes the panes sit flush against each
-     * other (the rows keep their own 16dp edge padding).
+     * other (the items keep their own 16dp edge padding).
      */
     public val paneGap: Dp = 24.dp,
 )
@@ -130,16 +130,16 @@ public class CatalogOptions(
  * - Two-pane (e.g. wide windows): both panes are visible at once; the top bar shows the
  *   screen title and there is no navigation.
  *
- * The list pane shows the root page's items (its sub-page rows and its regular items, in
- * content order); the detail pane shows the selected page's items the same way. The list
- * pane shows an MD3-style search pill; while a query is entered, the items are replaced
- * by the matching pages and preference entries, and selecting a result clears the query
- * and opens the page (or scrolls the list to the entry's row).
+ * The list pane shows the root page's items (its sub-page items and its regular items,
+ * in content order); the detail pane shows the selected page's items the same way. The
+ * list pane shows an MD3-style search pill; while a query is entered, the items are
+ * replaced by the matching pages and preference entries, and selecting a result clears
+ * the query and opens the page (or scrolls the list to the entry's item).
  *
  * @param title Title of the screen, shown in the top bar.
- * @param root The root page: its items are the list pane's top level, and its page rows
- *   ([item] with a [Page]) are the first-level pages. A page row whose click is taken
- *   by an action is a two-target row: the content runs the action, the trailing chevron
+ * @param root The root page: its items are the list pane's top level, and its page items
+ *   ([item] with a [Page]) are the first-level pages. A page item whose click is taken
+ *   by an action is a two-target item: the content runs the action, the trailing chevron
  *   opens the page.
  * @param modifier Modifier applied to the root surface.
  * @param onBack Called when the host should dismiss the screen (i.e. system back while
@@ -238,11 +238,11 @@ public fun Catalog(
         }
     // The navigation trail within the page tree: the chain of page ids from the top
     // level down to the page currently shown in the detail pane (empty = none
-    // selected). The detail shows the deepest page; the list pane shows the rows of its
-    // parent (the top-level pages while at the root). Tapping a sub-page row pushes its
+    // selected). The detail shows the deepest page; the list pane shows the items of its
+    // parent (the top-level pages while at the root). Tapping a sub-page item pushes its
     // id, tapping a breadcrumb segment (or back) pops to that ancestor.
     var pagePath by rememberSaveable { mutableStateOf<List<String>>(emptyList()) }
-    // True once the user explicitly opens a page (row tap, breadcrumb, search result).
+    // True once the user explicitly opens a page (item tap, breadcrumb, search result).
     // Survives rotation so a later grow to two-pane can refill the detail pane; a pure
     // rotation round trip on a fresh launch must stay at the root level.
     var userSelectedPage by rememberSaveable { mutableStateOf(false) }
@@ -251,7 +251,7 @@ public fun Catalog(
     fun pathOf(pageId: String): List<String> =
         findPagePath(root, pageId)?.drop(1)?.map { it.id } ?: listOf(pageId)
     // Selects [pageId] in the detail pane with [trail] as its navigation trail. The
-    // trail is the one of the place the page was selected from (a row knows where it
+    // trail is the one of the place the page was selected from (an item knows where it
     // lives) rather than re-derived from the tree, so a page hosted from several
     // places is entered where the user tapped it.
     fun selectPageById(pageId: String, trail: List<String>) {
@@ -303,7 +303,7 @@ public fun Catalog(
             navigator.currentDestination?.pane == ListDetailPaneScaffoldRole.Detail
         when {
             isTwoPane && !onDetail -> {
-                // The auto-open filler: the first sub-page of the root (a two-target row
+                // The auto-open filler: the first sub-page of the root (a two-target item
                 // still opens its page).
                 val id =
                     navigator.currentDestination?.contentKey
@@ -346,7 +346,7 @@ public fun Catalog(
 
     var query by remember { mutableStateOf("") }
 
-    // The preference row a search result navigated to is highlighted briefly, so the
+    // The preference item a search result navigated to is highlighted briefly, so the
     // user can find it in the opened page (mirrors the launcher settings behavior).
     var highlightedKey by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(highlightedKey) {
@@ -356,11 +356,11 @@ public fun Catalog(
         }
     }
 
-    // The lazy list index of the row a search result navigated to; the detail pane
+    // The lazy list index of the item a search result navigated to; the detail pane
     // scrolls to it when set.
     var scrollToIndex by remember { mutableStateOf<Int?>(null) }
-    // The list-pane counterpart for root rows: the search pill is item 0, the page rows
-    // follow, then the root rows.
+    // The list-pane counterpart for root items: the search pill is item 0, the page
+    // items follow, then the root items.
     var listScrollToIndex by remember { mutableStateOf<Int?>(null) }
 
     fun backAction() {
@@ -408,22 +408,22 @@ public fun Catalog(
             destination?.pane == ListDetailPaneScaffoldRole.Detail &&
             currentPage != null
 
-    // Make a pane show [owner]'s items, then scroll it to the row at [index] and
-    // highlight the lazy list item [key] (null: the row cannot be highlighted). [trail]
-    // is [owner]'s trail below the root, where the row was found: it is used when the
+    // Make a pane show [owner]'s items, then scroll it to the item at [index] and
+    // highlight the lazy list item [key] (null: the item cannot be highlighted). [trail]
+    // is [owner]'s trail below the root, where the item was found: it is used when the
     // owner has to be opened (a page hosted from several places is entered through it).
-    fun showListRow(owner: Page, trail: List<String>, key: String?, index: Int) {
+    fun showListItem(owner: Page, trail: List<String>, key: String?, index: Int) {
         when {
             // The list pane already shows the owner's items.
             parentPage.id == owner.id -> Unit
             // Single-pane, the owner is the root, and the detail is open: back to the
-            // root list, where the owner's rows live.
+            // root list, where the owner's items live.
             !isTwoPane &&
                 owner.id == root.id &&
                 destination?.pane == ListDetailPaneScaffoldRole.Detail ->
                 scope.launch { popToRootList() }
             // Single-pane with a nested owner: the list only ever shows the root's
-            // items, so open the owner in the detail and locate the row there.
+            // items, so open the owner in the detail and locate the item there.
             !isTwoPane -> {
                 selectPageById(owner.id, trail)
                 highlightedKey = key
@@ -446,55 +446,55 @@ public fun Catalog(
     }
 
     // An entry of a page the list pane should show: make sure it shows that page's
-    // items, then scroll the list pane to the row and highlight it.
+    // items, then scroll the list pane to the item and highlight it.
     fun showListEntry(entry: SearchIndexEntry, owner: Page, trail: List<String>) {
         query = ""
-        showListRow(owner, trail, entry.key, entry.index)
+        showListItem(owner, trail, entry.key, entry.index)
     }
 
-    // A page row matched: it is not a viewable page (it carries an action), so show the
-    // page that owns the row in the list pane, then scroll to the row and highlight it.
-    // [trail] is the matched page's trail below the root, so the owner is the row's
+    // A page item matched: it is not a viewable page (it carries an action), so show the
+    // page that owns the item in the list pane, then scroll to the item and highlight it.
+    // [trail] is the matched page's trail below the root, so the owner is the item's
     // real parent rather than a re-walk of the tree.
-    fun showSubPageRow(page: Page, trail: List<String>) {
+    fun showSubPageItem(page: Page, trail: List<String>) {
         query = ""
         val ownerTrail = trail.dropLast(1)
         val owner = ownerTrail.lastOrNull()?.let { findPage(root, it) } ?: root
         val ref = owner.structure.subPages.firstOrNull { it.page.id == page.id } ?: return
-        showListRow(owner, ownerTrail, ref.key, ref.index)
+        showListItem(owner, ownerTrail, ref.key, ref.index)
     }
 
-    // A search result row was tapped.
+    // A search result item was tapped.
     fun onSearchEntrySelected(entry: SearchEntry) {
         query = ""
         // Clear the search field's focus and hide the keyboard up front: on Android the
         // IME is tied to the window, not to Compose focus, so moving focus alone does not
-        // dismiss it. Doing this at the tap (synchronously) beats the row's own focus
+        // dismiss it. Doing this at the tap (synchronously) beats the item's own focus
         // request, which otherwise races the scroll animation.
         focusManager.clearFocus(force = true)
         keyboardController?.hide()
         val page = entry.page
         when {
-            // An entry of the page the list pane shows: scroll the list to the row.
+            // An entry of the page the list pane shows: scroll the list to the item.
             entry.entry != null && page.id == parentPage.id ->
                 showListEntry(entry.entry, page, pagePath.dropLast(1))
             // An entry of the root while nested (two-pane): back to the root level, then
-            // scroll the list to the row.
+            // scroll the list to the item.
             entry.entry != null && page.id == root.id ->
                 showListEntry(entry.entry, root, emptyList())
             // The root page itself matched: its items are the list itself — nothing to
             // open.
             page.id == root.id -> Unit
-            // A page-level match: focus the page's row (scroll + highlight) rather than
+            // A page-level match: focus the page's item (scroll + highlight) rather than
             // opening the page — search locates, it doesn't navigate.
-            entry.entry == null -> showSubPageRow(page, entry.trail)
+            entry.entry == null -> showSubPageItem(page, entry.trail)
             else -> {
                 // The entry's page: open it through the result's own trail (a page
                 // hosted from several places is entered where the result found it).
                 selectPageById(page.id, entry.trail)
                 highlightedKey = entry.entry!!.key
                 // The entry's index is relative to the page's own lazy list, sub-page
-                // rows included — no offset to compute.
+                // items included — no offset to compute.
                 scrollToIndex = entry.entry.index
             }
         }
@@ -574,7 +574,7 @@ public fun Catalog(
                         DetailPane(
                             page = currentPage,
                             selectedPageId = selectedPageId,
-                            // The detail shows the current page: its rows extend the
+                            // The detail shows the current page: its items extend the
                             // shown page's trail.
                             onSelectPage = { id -> selectPageById(id, pagePath + listOf(id)) },
                             onBack = ::backAction,

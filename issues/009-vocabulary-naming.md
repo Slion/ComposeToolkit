@@ -68,7 +68,7 @@ non-settings content. "Row" rejected (layout may become lines later).
 | `PreferenceFlow` + `create*PreferenceFlow` + `LocalPreferenceFlow` + `ProvidePreferenceFlow` | **delete as a concept** | `LocalStore` instead |
 | `rememberPreferenceState` | `rememberValue(key)` | one per-key store handle |
 | package `net.slions.compose.preference` | `net.slions.compose.catalog` | `:preference` module dir may stay; rename package + test packages |
-| `PreferenceTheme` / `preferenceTheme` | keep | package prefix already flavors it |
+| `PreferenceTheme` / `preferenceTheme` | `ItemTheme` / `itemTheme` (+`LocalItemTheme`, `ProvideItemTheme`) | superseded 2026-10-11: what is styled is the Item; `ProvidePreferenceLocals` → `ProvideCatalogLocals` as well; "row" wording in docs → "item" |
 | `PreferenceCard*` (6 types) | `Card*` | `CardItem` now consistent with the Item concept |
 | `searchPreferencePages` | `searchPages` | `walkPages`/`findPage*` already fine |
 | `LiveSliderPreference`, `ColorPreference`, `AccentColorOption` | **move to `:sample`** | not library API |

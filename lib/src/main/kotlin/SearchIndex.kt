@@ -43,12 +43,12 @@ internal object SearchIndexer {
     }
 
     /**
-     * Records a searchable entry for the preference row being registered, with the index of
+     * Records a searchable entry for the preference item being registered, with the index of
      * the lazy list item it belongs to. No-op when no index walk is in progress, so builders
      * call it unconditionally.
      *
-     * @param icon The leading icon of the row, shown in a search result for the entry; null
-     *   when the row has none.
+     * @param icon The leading icon of the item, shown in a search result for the entry; null
+     *   when the item has none.
      */
     fun record(
         key: String,
@@ -58,15 +58,15 @@ internal object SearchIndexer {
     ): SearchIndexEntry? = collector?.record(key, title, summary, icon)
 
     /**
-     * Records a page reference for the page row ([item] with a [Page]) being registered
-     * (its row is registered with the fake scope immediately after). No-op when no walk is in
-     * progress. Unlike [record], it does not add a search entry: the child page is
+     * Records a page reference for the page item ([item] with a [Page]) being registered
+     * (its item is registered with the fake scope immediately after). No-op when no walk is
+     * in progress. Unlike [record], it does not add a search entry: the child page is
      * searchable as a page of the tree in its own right.
      *
-     * @param key The key of the lazy list item that hosts the row, so a search result can
+     * @param key The key of the lazy list item that hosts the item, so a search result can
      *   scroll to and highlight it.
-     * @param icon The leading icon of the row, shown in a search result for the page;
-     *   null when the row has none.
+     * @param icon The leading icon of the item, shown in a search result for the page;
+     *   null when the item has none.
      */
     fun recordSubPage(
         page: Page,
@@ -84,18 +84,17 @@ internal object SearchIndexer {
 }
 
 /**
- * A child-page reference registered by a page row ([item] with a [Page]): the child page,
- * the index of the row in the owning page's lazy list, and the key of the lazy list item
- * that hosts the row (so a search result can highlight it; null when the row cannot be
- * highlighted).
+ * A child-page reference registered by a page item ([item] with a [Page]): the child page,
+ * the index of the item in the owning page's lazy list, and the key of the lazy list item
+ * that hosts it (so a search result can highlight it; null when it cannot be highlighted).
  */
 public data class SubPageRef(
     public val page: Page,
     public val index: Int = 0,
     public val key: String? = null,
     /**
-     * The leading icon of the page's row, drawn next to the page in a search result;
-     * null when the row has no icon (the result row then shows the page's icon, or its
+     * The leading icon of the page's item, drawn next to the page in a search result;
+     * null when the item has no icon (the result item then shows the page's icon, or its
      * own icon, instead).
      */
     public val icon: @Composable (() -> Unit)? = null,
@@ -131,8 +130,8 @@ public data class SearchIndexEntry(
     /** [summary] lowercased once at index-build time; null when [summary] is null. */
     public val summaryLowercase: String? = summary?.lowercase(),
     /**
-     * The leading icon of the entry's row, drawn next to the entry in a search result;
-     * null when the row has no icon (the result row then shows its own icon instead).
+     * The leading icon of the entry's item, drawn next to the entry in a search result;
+     * null when the item has no icon (the result item then shows its own icon instead).
      */
     public val icon: @Composable (() -> Unit)? = null,
 )
@@ -168,14 +167,14 @@ public fun buildSearchIndex(root: Page): Map<String, List<SearchIndexEntry>> =
     buildPageStructure(root).mapValues { it.value.entries }
 
 /**
- * Flattens the search [matches] into the result rows the list pane shows, ordered by
+ * Flattens the search [matches] into the result items the list pane shows, ordered by
  * relevance: a page whose title is exactly the query first, then pages whose title
  * contains it, then entries whose title contains it, and finally matches that only hit
  * a summary. Within a rank the shallower page (closer to the root) comes first, and the
- * tree order (the walk order) is kept as the last resort. A row gets a unique id
- * (several rows can share an entry key, e.g. the rows of the same card), so the results
- * list can key on it. [title] is the screen title, shown as the path of the root
- * page's rows (the root is the screen itself, so it has no trail segment).
+ * tree order (the walk order) is kept as the last resort. An item gets a unique id
+ * (several items can share an entry key, e.g. the items of the same card), so the
+ * results list can key on it. [title] is the screen title, shown as the path of the
+ * root page's items (the root is the screen itself, so it has no trail segment).
  *
  * A pure function so it can be memoized (e.g. in `remember`) and unit-tested.
  */
@@ -186,18 +185,18 @@ internal fun buildSearchEntries(
     title: String,
 ): List<SearchEntry> {
     val q = query.trim().lowercase()
-    var rowId = 0
-    // The row's leading icon of every hosted page (its page row's icon, the page's own
-    // as fallback), so a page-level result row looks like its row.
+    var resultId = 0
+    // The leading icon of every hosted page's item (its page item's icon, the page's own
+    // as fallback), so a page-level result item looks like its item.
     val subPageIconById =
         buildPageStructure(root).values
             .flatMap { it.subPages }
             .associateBy({ it.page.id }) { it.icon }
-    // (relevance rank, page depth in the tree, row) — see the sort at the end.
+    // (relevance rank, page depth in the tree, item) — see the sort at the end.
     val ranked = mutableListOf<Triple<Int, Int, SearchEntry>>()
     matches.forEach { match ->
         // The page's preferred trail (the shallowest one when the page is hosted from
-        // several places), shown under each of its result rows and stored on the row:
+        // several places), shown under each of its result items and stored on the item:
         // selecting it enters the page through this trail.
         val pagePath = findPagePath(root, match.page.id)
         // The trail as titles (e.g. "Nested > Advanced"); the root's trail is the
@@ -212,14 +211,14 @@ internal fun buildSearchEntries(
         val trail = pagePath?.drop(1)?.map { it.id } ?: emptyList()
         val depth = trail.size
         if (match.pageMatched) {
-            // The page itself matched (by title/summary): show the page row, even when
+            // The page itself matched (by title/summary): show the page item, even when
             // some of the page's entries matched as well.
             ranked.add(
                 Triple(
                     pageMatchRank(match.page, q),
                     depth,
                     SearchEntry(
-                        id = rowId++,
+                        id = resultId++,
                         page = match.page,
                         path = path,
                         trail = trail,
@@ -229,14 +228,14 @@ internal fun buildSearchEntries(
                 )
             )
         }
-        // One row per matching preference entry of the page.
+        // One item per matching preference entry of the page.
         match.matches.forEach { entry ->
             ranked.add(
                 Triple(
                     entryMatchRank(entry, q),
                     depth,
                     SearchEntry(
-                        id = rowId++,
+                        id = resultId++,
                         page = match.page,
                         path = path,
                         trail = trail,

@@ -117,13 +117,13 @@ Each built-in item type includes 4 kinds of APIs:
 
 ### Theming
 
-The visual appearance of the items can be customized by providing a custom [`PreferenceTheme`](lib/src/main/kotlin/PreferenceTheme.kt) with `preferenceTheme` to `ProvidePreferenceLocals` or `ProvidePreferenceTheme`.
+The visual appearance of the items can be customized by providing a custom [`ItemTheme`](lib/src/main/kotlin/ItemTheme.kt) with `itemTheme` to `ProvideCatalogLocals` or `ProvideItemTheme`.
 
-Customizable values in the theme include most dimensions, colors and text styles used by the built-in preferences.
+Customizable values in the theme include most dimensions, colors and text styles used by the built-in items.
 
 ### Data source
 
-The data source of the preferences can be customized by providing a custom `MutableStateFlow<Store>` to `ProvidePreferenceLocals` or `ProvideStore`.
+The data source of the items can be customized by providing a custom `MutableStateFlow<Store>` to `ProvideCatalogLocals` or `ProvideStore`.
 
 The [`Store`](lib/src/main/kotlin/Store.kt) interface defined in this library is similar to the AndroidX DataStore [`Preferences`](https://developer.android.com/reference/kotlin/androidx/datastore/preferences/core/Preferences) class, but:
 
@@ -156,8 +156,8 @@ Catalog(
 
 - **Single-pane** (narrow window, e.g. a phone in portrait): selecting a page navigates to the detail pane; the top bar shows the page title with a back arrow, and system back pops the detail before dismissing the screen.
 - **Two-pane** (wide window, e.g. a tablet or an unfolded foldable): both panes are visible at once as a 50/50 split.
-- The **list pane** shows an MD3-style search pill. While a query is entered, the page list is replaced by the matching pages and preference entries; selecting a result clears the query, opens the page, and scrolls to (briefly highlights) the matched row.
-- The **root of the tree** hosts regular preferences in addition to the page rows: pass `rootContent` to `Catalog` to draw them below the top-level pages (any `LazyListScope` preference builder works, as in a page's `content`; the rows are searchable). Bump a page's `contentVersion` or the screen's `rootContentVersion` when rows change at runtime so the search index is rebuilt.
+- The **list pane** shows an MD3-style search pill. While a query is entered, the page list is replaced by the matching pages and preference entries; selecting a result clears the query, opens the page, and scrolls to (briefly highlights) the matched item.
+- The **root of the tree** hosts regular items in addition to the page items: pass `rootContent` to `Catalog` to draw them below the top-level pages (any `LazyListScope` item builder works, as in a page's `content`; the items are searchable). Bump a page's `contentVersion` or the screen's `rootContentVersion` when items change at runtime so the search index is rebuilt.
 
 The screen follows the [Material 3 adaptive](https://developer.android.com/develop/ui/compose/m3/adaptive) layout, so the same code adapts across postures. It also handles **half-folded** foldables (the two panes stay exactly half each via `HingePolicy.NeverAvoid`) and **medium-width** windows (the detail pane activates there, not only at the 720dp "Expanded" class).
 

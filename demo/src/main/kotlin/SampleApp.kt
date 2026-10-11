@@ -30,8 +30,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import net.slions.compose.toolkit.Catalog
 import net.slions.compose.toolkit.CatalogOptions
-import net.slions.compose.toolkit.ProvidePreferenceLocals
-import net.slions.compose.toolkit.ProvidePreferenceTheme
+import net.slions.compose.toolkit.ProvideCatalogLocals
+import net.slions.compose.toolkit.ProvideItemTheme
 
 /**
  * The root of the sample app: the pages hosted by
@@ -40,7 +40,7 @@ import net.slions.compose.toolkit.ProvidePreferenceTheme
 @Composable
 fun SampleApp() {
     // The theme flow is the single source of truth; the default flow persists it to disk.
-    ProvidePreferenceLocals {
+    ProvideCatalogLocals {
         val (themeValues, _) = rememberSampleThemeValues()
         val darkTheme = effectiveDarkTheme(themeValues.themeMode, isSystemInDarkTheme())
         var sheetOpen by rememberSaveable { mutableStateOf(false) }
@@ -50,7 +50,7 @@ fun SampleApp() {
                 // (title/summary/icon, drawn from MaterialTheme.colorScheme) are otherwise
                 // captured once, against the outer light scheme, and would not follow the
                 // live light/dark switch.
-                ProvidePreferenceTheme {
+                ProvideItemTheme {
                     val context = LocalContext.current
                     Catalog(
                         title = SampleTitle,

@@ -43,12 +43,12 @@ public inline fun LazyListScope.itemActionsSwitch(
     noinline onClick: ((Boolean) -> Unit)? = null,
 ) {
     // The icon depends on the value, which is only known in composition: the result
-    // row re-reads the row's (store-backed) state to render it with the current value.
+    // item re-reads the item's (store-backed) state to render it with the current value.
     SearchIndexer.record(
         key,
         title,
         staticSummary,
-        icon?.let { rowIcon -> @Composable { rowIcon(rememberState().value) } },
+        icon?.let { itemIcon -> @Composable { itemIcon(rememberState().value) } },
     )
     item(key = key, contentType = "ItemActionsSwitch") {
         val state = rememberState()
@@ -134,7 +134,7 @@ public fun ItemActionsSwitch(
     ItemActions(
         title = title,
         secondTarget = {
-            val theme = LocalPreferenceTheme.current
+            val theme = LocalItemTheme.current
             Switch(
                 checked = value,
                 onCheckedChange = onValueChange,

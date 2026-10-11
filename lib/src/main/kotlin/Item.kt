@@ -51,35 +51,35 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
- * Adds a row to the lazy list: a preference row, or — with [page] — a row that opens a
- * page. A page row is the basic way a page references its children: it can be placed
- * anywhere in a page's content, next to any other item, and it is styled exactly like
- * any other row (a host may give it a [CardStyle] or put it in a [group] like any other
- * item). It
- * only defaults its action: tapping a page row navigates into [page], unless [onClick]
- * is set, in which case the row content runs the action and the trailing chevron,
- * behind a separator, becomes the page's own tap target (a two-target row).
+ * Adds an item to the lazy list: a preference item, or — with [page] — an item that
+ * opens a page. A page item is the basic way a page references its children: it can be
+ * placed anywhere in a page's content, next to any other item, and it is styled exactly
+ * like any other item (a host may give it a [CardStyle] or put it in a [group] like any
+ * other item). It
+ * only defaults its action: tapping a page item navigates into [page], unless [onClick]
+ * is set, in which case the item content runs the action and the trailing chevron,
+ * behind a separator, becomes the page's own tap target (a two-target item).
  *
- * @param key The lazy list key of the row, and the preference state key. If null,
- *   [page]'s id is used (page rows are keyed by their page's id).
- * @param page The page the row opens; when null, the row is a regular preference row.
- * @param title The title of the row. Also used as the row's search text. If null,
+ * @param key The lazy list key of the item, and the preference state key. If null,
+ *   [page]'s id is used (page items are keyed by their page's id).
+ * @param page The page the item opens; when null, the item is a regular preference item.
+ * @param title The title of the item. Also used as the item's search text. If null,
  *   [page]'s title is used.
- * @param modifier Modifier applied to the row.
- * @param enabled Whether the row is enabled.
+ * @param modifier Modifier applied to the item.
+ * @param enabled Whether the item is enabled.
  * @param icon The leading icon. If null, [page]'s icon is used.
- * @param actionIcon The action icon, shown just before the widget. For a page row, a
+ * @param actionIcon The action icon, shown just before the widget. For a page item, a
  *   chevron if null.
  * @param summary The summary text, shown below the title. If null, [page]'s summary is
  *   used.
  * @param staticSummary A static summary used in the [buildSearchIndex] index. If null,
  *   [summary] is used.
  * @param widgetContainer The trailing widget (e.g. a switch or checkbox).
- * @param onClick Click handler; for a page row, when null the row navigates into [page];
- *   when set, the row content runs it and the trailing chevron (behind a separator)
+ * @param onClick Click handler; for a page item, when null the item navigates into [page];
+ *   when set, the item content runs it and the trailing chevron (behind a separator)
  *   opens [page].
- * @param style When non-null, the row is drawn in its own card of this style (a card is a
- *   style, not a container); [CardStyle.None] is equivalent to null — the row is drawn
+ * @param style When non-null, the item is drawn in its own card of this style (a card is a
+ *   style, not a container); [CardStyle.None] is equivalent to null — the item is drawn
  *   without a card.
  * @param cardColor Card background color. Only applies with [style]; if null, the default
  * container color of [style] is used.
@@ -90,7 +90,7 @@ import androidx.compose.ui.unit.dp
  * @param shape Card shape. Only applies with [style]; if null, `MaterialTheme.shapes.medium`
  * is used.
  * @param outerPadding Clearance between the card and its container. Only applies with [style];
- * if null, `PreferenceTheme.horizontalSpacing` is used on all sides.
+ * if null, `ItemTheme.horizontalSpacing` is used on all sides.
  */
 public fun LazyListScope.item(
     key: String? = null,
@@ -111,44 +111,44 @@ public fun LazyListScope.item(
     shape: Shape? = null,
     outerPadding: PaddingValues? = null,
 ) {
-    val rowKey = key ?: page?.id
-    val rowTitle = title ?: page?.title
-    val rowSummary = summary ?: page?.summary
+    val itemKey = key ?: page?.id
+    val itemTitle = title ?: page?.title
+    val itemSummary = summary ?: page?.summary
     when {
-        // A page row: registers the page reference (for the tree walk and navigation).
+        // A page item: registers the page reference (for the tree walk and navigation).
         // No search entry: the child page is searchable as a page of the tree in its
-        // own right, and a row entry would only duplicate it.
-        page != null -> SearchIndexer.recordSubPage(page, rowKey, icon ?: page?.icon)
-        // A preference row: searchable entry, keyed.
-        rowKey != null ->
+        // own right, and an item entry would only duplicate it.
+        page != null -> SearchIndexer.recordSubPage(page, itemKey, icon ?: page?.icon)
+        // A preference item: searchable entry, keyed.
+        itemKey != null ->
             SearchIndexer.record(
-                rowKey,
-                rowTitle ?: "",
-                staticSummary ?: rowSummary,
+                itemKey,
+                itemTitle ?: "",
+                staticSummary ?: itemSummary,
                 icon ?: page?.icon,
             )
     }
-    item(key = rowKey, contentType = if (page != null) "PageItem" else "Item") {
-        val row: @Composable (Modifier) -> Unit = { m ->
+    item(key = itemKey, contentType = if (page != null) "PageItem" else "Item") {
+        val composeItem: @Composable (Modifier) -> Unit = { m ->
             Item(
-                title = rowTitle ?: "",
+                title = itemTitle ?: "",
                 page = page,
                 modifier = m,
                 enabled = enabled,
                 icon = icon ?: page?.icon,
                 actionIcon = actionIcon,
-                summary = rowSummary,
+                summary = itemSummary,
                 widgetContainer = widgetContainer,
                 onClick = onClick,
             )
         }
         if (style != null && style != CardStyle.None) {
-            // A carded row: the card is a style of the row, with the group's outer clearance.
-            val outer = outerPadding ?: PaddingValues(LocalPreferenceTheme.current.horizontalSpacing)
+            // A carded item: the card is a style of the item, with the group's outer clearance.
+            val outer = outerPadding ?: PaddingValues(LocalItemTheme.current.horizontalSpacing)
             Column(
                 modifier =
                     modifier
-                        .then(highlightedKeyModifier(rowKey))
+                        .then(highlightedKeyModifier(itemKey))
                         .fillMaxWidth()
                         .padding(outer),
             ) {
@@ -159,29 +159,29 @@ public fun LazyListScope.item(
                     cardElevation = cardElevation,
                     cardBorder = cardBorder,
                 ) {
-                    row(Modifier.fillMaxWidth())
+                    composeItem(Modifier.fillMaxWidth())
                 }
             }
         } else {
-            row(modifier.then(highlightedKeyModifier(rowKey)))
+            composeItem(modifier.then(highlightedKeyModifier(itemKey)))
         }
     }
 }
 
 /**
- * The id of the page currently open in the detail pane, so a page row can highlight
+ * The id of the page currently open in the detail pane, so a page item can highlight
  * itself; null when no page is open. Provided by the Catalog's panes.
  */
 /**
- * The navigation callback of the pane hosting a page row: invoked with the page id to
+ * The navigation callback of the pane hosting a page item: invoked with the page id to
  * navigate into it. Provided by the Catalog's panes.
  */
 internal val LocalOnSelectPage: ProvidableCompositionLocal<(String) -> Unit> =
     compositionLocalOf { { } }
 
 /**
- * One row: a preference row, or — with [page] — a page row that opens the page. A page
- * row is rendered exactly like any other row (styled like any other: a host may give it a
+ * One item: a preference item, or — with [page] — a page item that opens the page. A page
+ * item is rendered exactly like any other item (styled like any other: a host may give it a
  * [CardStyle] or put it in a [group] like any other item); it only defaults its action — the
  * trailing chevron and the click (navigate into [page] unless [onClick] is set, in which
  * case the chevron, behind a separator, is the page's own tap target).
@@ -200,8 +200,8 @@ public fun Item(
 ) {
     // Read in the composable scope: the click lambda is not.
     val navigate = LocalOnSelectPage.current
-    // A page row whose click is taken by an action: the trailing action icon (the
-    // chevron by default) becomes the page's own tap target (a two-target row), drawn
+    // A page item whose click is taken by an action: the trailing action icon (the
+    // chevron by default) becomes the page's own tap target (a two-target item), drawn
     // behind a separator in the widget slot, as in [ItemActionIconButton].
     val iconNavigates = page != null && onClick != null
     val chevron =
@@ -213,7 +213,7 @@ public fun Item(
         }
     val twoTargetIcon: @Composable (() -> Unit)? =
         if (iconNavigates) actionIcon ?: chevron else null
-    // A page row's default action icon: the navigation chevron.
+    // A page item's default action icon: the navigation chevron.
     val effectiveActionIcon =
         if (twoTargetIcon == null && page != null && actionIcon == null) {
             chevron
@@ -228,7 +228,7 @@ public fun Item(
         }
     BasicItem(
         textContainer = {
-            val theme = LocalPreferenceTheme.current
+            val theme = LocalItemTheme.current
             Column(
                 modifier =
                     Modifier.padding(
@@ -271,7 +271,7 @@ public fun Item(
         enabled = enabled,
         iconContainer = {
             if (icon != null) {
-                val theme = LocalPreferenceTheme.current
+                val theme = LocalItemTheme.current
                 Row(
                     modifier =
                         Modifier.widthIn(min = theme.iconContainerMinWidth)
@@ -287,14 +287,14 @@ public fun Item(
                     )
                     // A fixed gap to the text regardless of the icon's own size, so a
                     // large icon (e.g. a game cover) is not flush against the title. The
-                    // row grows past [iconContainerMinWidth] to keep the spacing intact.
+                    // item grows past [iconContainerMinWidth] to keep the spacing intact.
                     Spacer(modifier = Modifier.width(theme.horizontalSpacing))
                 }
             }
         },
         actionIconContainer = {
             if (effectiveActionIcon != null) {
-                val theme = LocalPreferenceTheme.current
+                val theme = LocalItemTheme.current
                 Box(
                     modifier =
                         Modifier.widthIn(min = theme.iconContainerMinWidth)
@@ -313,7 +313,7 @@ public fun Item(
         },
         widgetContainer = {
             if (twoTargetIcon != null) {
-                val theme = LocalPreferenceTheme.current
+                val theme = LocalItemTheme.current
                 Row(
                     modifier = Modifier.padding(start = theme.horizontalSpacing),
                     verticalAlignment = Alignment.CenterVertically,
@@ -327,11 +327,11 @@ public fun Item(
                                     }
                                 ),
                     )
-                    // The row's click runs the action, so the icon is the page's own
+                    // The item's click runs the action, so the icon is the page's own
                     // entry point: a tap target of its own, behind a separator (as in
                     // [ItemActionIconButton]). Equal padding on both sides of the 48 dp
                     // button (whose 12 dp inner padding centers the icon) leaves the
-                    // icon centered between the separator and the row's end.
+                    // icon centered between the separator and the item's end.
                     IconButton(
                         onClick = { page?.id?.let(navigate) },
                         modifier = Modifier.padding(horizontal = theme.horizontalSpacing),

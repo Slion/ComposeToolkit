@@ -28,8 +28,13 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
+/**
+ * The appearance of the items (and their [Section]s): paddings, spacing, colors and text
+ * styles. Provided by [ProvideItemTheme] (or [ProvideCatalogLocals]) and read from
+ * [LocalItemTheme]; the defaults follow [MaterialTheme].
+ */
 @Stable
-public class PreferenceTheme(
+public class ItemTheme(
     public val categoryPadding: PaddingValues,
     public val categoryColor: Color,
     public val categoryTextStyle: TextStyle,
@@ -47,7 +52,7 @@ public class PreferenceTheme(
 )
 
 @Composable
-public fun preferenceTheme(
+public fun itemTheme(
     categoryPadding: PaddingValues =
         PaddingValues(start = 16.dp, top = 24.dp, end = 16.dp, bottom = 8.dp),
     categoryColor: Color = MaterialTheme.colorScheme.secondary,
@@ -63,8 +68,8 @@ public fun preferenceTheme(
     summaryColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     summaryTextStyle: TextStyle = MaterialTheme.typography.bodyMedium,
     dividerHeight: Dp = 32.dp,
-): PreferenceTheme =
-    PreferenceTheme(
+): ItemTheme =
+    ItemTheme(
         categoryPadding = categoryPadding,
         categoryColor = categoryColor,
         categoryTextStyle = categoryTextStyle,
@@ -81,14 +86,14 @@ public fun preferenceTheme(
         dividerHeight = dividerHeight,
     )
 
-public val LocalPreferenceTheme: ProvidableCompositionLocal<PreferenceTheme> = compositionLocalOf {
-    noLocalProvidedFor("LocalPreferenceTheme")
+public val LocalItemTheme: ProvidableCompositionLocal<ItemTheme> = compositionLocalOf {
+    noLocalProvidedFor("LocalItemTheme")
 }
 
 @Composable
-public fun ProvidePreferenceTheme(
-    theme: PreferenceTheme = preferenceTheme(),
+public fun ProvideItemTheme(
+    theme: ItemTheme = itemTheme(),
     content: @Composable () -> Unit,
 ) {
-    CompositionLocalProvider(LocalPreferenceTheme provides theme, content = content)
+    CompositionLocalProvider(LocalItemTheme provides theme, content = content)
 }

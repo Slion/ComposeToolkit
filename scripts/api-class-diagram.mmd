@@ -125,7 +125,7 @@ class LocalStore {
 }
 
 %% ===== Theming =====
-class PreferenceTheme {
+class ItemTheme {
   +categoryPadding: PaddingValues
   +categoryColor: Color
   +padding: PaddingValues
@@ -134,14 +134,14 @@ class PreferenceTheme {
   +summaryColor: Color
   +summaryTextStyle: TextStyle
   +dividerHeight: Dp
-  preferenceTheme()*
-  LocalPreferenceTheme
+  itemTheme()*
+  LocalItemTheme
 }
 
-%% ===== Row widgets (each = LazyListScope builder + Composable) =====
+%% ===== Item widgets (each = LazyListScope builder + Composable) =====
 class Item {
   <<composable - item family>>
-  +page: Page? (optional row that opens a page)
+  +page: Page? (optional item that opens a page)
   +style: CardStyle? (drawn in a card of this style)
   +cardColor / cardElevation / cardBorder / shape / outerPadding
 }
@@ -235,7 +235,7 @@ Catalog --> Page : root
 Catalog --> CatalogOptions : options
 CatalogOptions --> HingePolicy : hingePolicy
 Catalog ..> ScreenAdaptive : remembers
-Catalog ..> PreferenceTheme : consumes
+Catalog ..> ItemTheme : consumes
 Catalog ..> SearchIndex : builds
 Catalog o-- ListPane : composes
 Catalog o-- DetailPane : composes
@@ -258,12 +258,12 @@ SearchIndex ..> Page : walks
 SearchIndex ..> PageStructure : builds
 SearchEntry --> Page : page
 SearchEntry ..> SearchIndexEntry : entry
-Item ..> Page : page row (optional)
+Item ..> Page : page item (optional)
 
 ItemCheckbox ..> LocalStore : reads state
 ItemSlider ..> LocalStore : reads state
 ItemTextField ..> LocalStore : reads state
-Item ..> PreferenceTheme : styled by
+Item ..> ItemTheme : styled by
 Item ..> LocalStore : reads state
 DetailPane ..> Item : renders items
 

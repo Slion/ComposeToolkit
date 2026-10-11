@@ -53,7 +53,7 @@ public fun LazyListScope.section(
 public fun Section(title: String, modifier: Modifier = Modifier) {
     BasicItem(
         textContainer = {
-            val theme = LocalPreferenceTheme.current
+            val theme = LocalItemTheme.current
             Box(
                 modifier = Modifier.padding(theme.categoryPadding),
                 contentAlignment = Alignment.CenterStart,

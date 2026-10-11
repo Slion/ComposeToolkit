@@ -45,17 +45,17 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
- * Adds a slider preference row to the lazy list, whose state is remembered by [key].
+ * Adds a slider preference item to the lazy list, whose state is remembered by [key].
  *
- * @param key The lazy list key of the row, and the preference state key.
+ * @param key The lazy list key of the item, and the preference state key.
  * @param defaultValue The initial value of the slider.
- * @param title The title of the row. Also used as the row's search text.
- * @param modifier Modifier applied to the row.
- * @param rememberState How the row's state is remembered.
+ * @param title The title of the item. Also used as the item's search text.
+ * @param modifier Modifier applied to the item.
+ * @param rememberState How the item's state is remembered.
  * @param valueRange The range of values the slider can take.
  * @param valueSteps The number of discrete steps; 0 for continuous.
  * @param rememberSliderState How the slider's state is remembered.
- * @param enabled Whether the row is enabled, based on the current value.
+ * @param enabled Whether the item is enabled, based on the current value.
  * @param icon The leading icon, based on the current value.
  * @param summary The summary text, based on the current value, shown above the slider.
  * @param staticSummary A static summary used in the [buildSearchIndex] index.
@@ -81,12 +81,12 @@ public inline fun LazyListScope.itemSlider(
     noinline valueText: ((Float) -> String?)? = null,
 ) {
     // The icon depends on the value, which is only known in composition: the result
-    // row re-reads the row's (store-backed) state to render it with the current value.
+    // item re-reads the item's (store-backed) state to render it with the current value.
     SearchIndexer.record(
         key,
         title,
         staticSummary,
-        icon?.let { rowIcon -> @Composable { rowIcon(rememberState().value) } },
+        icon?.let { itemIcon -> @Composable { itemIcon(rememberState().value) } },
     )
     item(key = key, contentType = "ItemSlider") {
         val state = rememberState()
@@ -144,7 +144,7 @@ public fun LazyListScope.itemSlider(
 }
 
 /**
- * A slider preference row, whose state is a [MutableState].
+ * A slider preference item, whose state is a [MutableState].
  */
 @Composable
 public fun ItemSlider(
@@ -202,7 +202,7 @@ public fun ItemSlider(
             liveValue.floatValue = sliderValue
         }
     }
-    val theme = LocalPreferenceTheme.current
+    val theme = LocalItemTheme.current
     BasicItem(
         textContainer = {
             Column(
