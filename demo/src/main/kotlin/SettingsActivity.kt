@@ -23,12 +23,13 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.unit.dp
+import net.slions.compose.toolkit.CardStyle
 import net.slions.compose.toolkit.Catalog
 import net.slions.compose.toolkit.CatalogOptions
 import net.slions.compose.toolkit.Page
 import net.slions.compose.toolkit.ProvideCatalogLocals
 import net.slions.compose.toolkit.ProvideItemTheme
-import net.slions.compose.toolkit.item
+import net.slions.compose.toolkit.group
 
 /**
  * A second settings host: a dedicated activity running its own
@@ -69,15 +70,20 @@ private fun SettingsActivityScreen(onBack: () -> Unit) {
                         // childless root would leave the two-pane detail empty.
                         root =
                             Page(id = "settings_root", title = "Settings") {
-                                item(
-                                    page =
-                                        themePage(
-                                            values = themeValues,
-                                            onValuesChange = writeThemeValues,
-                                            dark = darkTheme,
-                                            defaultAccent = defaultAccent,
-                                        )
-                                )
+                                // A group of one, for now: the card is fully rounded (a
+                                // one-item group), and more page rows can join it later
+                                // without changing the shape of the code.
+                                group(key = "settings_theme_group", style = CardStyle.Filled) {
+                                    item(
+                                        page =
+                                            themePage(
+                                                values = themeValues,
+                                                onValuesChange = writeThemeValues,
+                                                dark = darkTheme,
+                                                defaultAccent = defaultAccent,
+                                            ),
+                                    )
+                                }
                             },
                         // This is a second surface, not the app's root: the title bar
                         // carries a back chevron and the system back at the root of the
