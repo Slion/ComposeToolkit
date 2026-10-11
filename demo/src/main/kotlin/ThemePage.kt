@@ -22,6 +22,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import dev.vicart.compose.material.symbols.MaterialSymbol
+import net.slions.compose.toolkit.CardStyle
 import net.slions.compose.toolkit.ColorOption
 import net.slions.compose.toolkit.Page
 import net.slions.compose.toolkit.group
@@ -49,9 +50,10 @@ fun themePage(
         icon = { MaterialSymbol.Outlined(icon = "palette") },
     ) {
         section(key = "theme_colors_category", title = "Colors")
-        group(key = "theme_colors_group") {
-            // Each row is a single builder call: the title, summary and icon are specified
-            // once, and the builder records them in the search index.
+        // Each row is a single builder call: the title, summary and icon are specified once
+        // and recorded in the search index. Inside the group the builders resolve to their
+        // GroupScope overloads, so the rows join the group's split card.
+        group(key = "theme_colors_group", style = CardStyle.Filled) {
             itemList(
                 key = "theme_mode",
                 value = values.themeMode,
@@ -91,7 +93,7 @@ fun themePage(
         }
 
         section(key = "theme_text_category", title = "Texts")
-        group(key = "theme_text_group") {
+        group(key = "theme_text_group", style = CardStyle.Filled) {
             itemList(
                 key = "theme_font",
                 value = values.fontFamily ?: SampleThemeValues.DEFAULT_FONT,
@@ -117,7 +119,7 @@ fun themePage(
         }
 
         section(key = "theme_shapes_category", title = "Shapes")
-        group(key = "theme_shapes_group") {
+        group(key = "theme_shapes_group", style = CardStyle.Filled) {
             itemSlider(
                 key = "theme_corner",
                 value = (values.cornerRadiusDp ?: DEFAULT_CORNER_RADIUS_DP).toFloat(),
@@ -133,7 +135,7 @@ fun themePage(
         }
 
         section(key = "theme_spacing_category", title = "Spacing")
-        group(key = "theme_spacing_group") {
+        group(key = "theme_spacing_group", style = CardStyle.Filled) {
             itemSlider(
                 key = "theme_pane_gap",
                 value = (values.paneGapDp ?: DEFAULT_PANE_GAP_DP).toFloat(),
@@ -149,7 +151,7 @@ fun themePage(
         }
 
         section(key = "theme_motion_category", title = "Motion")
-        group(key = "theme_motion_group") {
+        group(key = "theme_motion_group", style = CardStyle.Filled) {
             itemList(
                 key = "theme_transition",
                 value = values.pageTransition ?: DEFAULT_PAGE_TRANSITION,

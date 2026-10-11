@@ -16,6 +16,8 @@
 
 package net.slions.compose.toolkit
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -27,6 +29,7 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.material3.CardElevation
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -39,6 +42,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.res.stringResource
@@ -62,6 +67,12 @@ public inline fun <T> LazyListScope.itemMultiSelectList(
         @Composable
         (value: T, currentValues: Set<T>, onToggle: (Boolean) -> Unit) -> Unit =
         ItemMultiSelectListDefaults.item(valueToText),
+    style: CardStyle? = null,
+    cardColor: Color? = null,
+    cardElevation: CardElevation? = null,
+    cardBorder: BorderStroke? = null,
+    shape: Shape? = null,
+    outerPadding: PaddingValues? = null,
 ) {
     // The icon depends on the value, which is only known in composition: the result
     // item re-reads the item's (store-backed) state to render it with the current value.
@@ -72,19 +83,30 @@ public inline fun <T> LazyListScope.itemMultiSelectList(
         icon?.let { itemIcon -> @Composable { itemIcon(rememberState().value) } },
     )
     item(key = key, contentType = "ItemMultiSelectList") {
-        val state = rememberState()
-        val value by state
-        ItemMultiSelectList(
-            state = state,
-            values = values,
-            title = title,
-            modifier = modifier.then(highlightedKeyModifier(key)),
-            enabled = enabled,
-            icon = icon,
-            summary = summary,
-            valueToText = valueToText,
-            item = item,
-        )
+        cardedItem(
+            modifier = modifier,
+            key = key,
+            style = style,
+            cardColor = cardColor,
+            cardElevation = cardElevation,
+            cardBorder = cardBorder,
+            shape = shape,
+            outerPadding = outerPadding,
+        ) { rowModifier ->
+            val state = rememberState()
+            val value by state
+            ItemMultiSelectList(
+                state = state,
+                values = values,
+                title = title,
+                modifier = rowModifier,
+                enabled = enabled,
+                icon = icon,
+                summary = summary,
+                valueToText = valueToText,
+                item = item,
+            )
+        }
     }
 }
 
@@ -102,22 +124,124 @@ public fun <T> LazyListScope.itemMultiSelectList(
     valueToText: @Composable (T) -> AnnotatedString = { AnnotatedString(it.toString()) },
     item: @Composable (value: T, currentValues: Set<T>, onToggle: (Boolean) -> Unit) -> Unit =
         ItemMultiSelectListDefaults.item(valueToText),
+    style: CardStyle? = null,
+    cardColor: Color? = null,
+    cardElevation: CardElevation? = null,
+    cardBorder: BorderStroke? = null,
+    shape: Shape? = null,
+    outerPadding: PaddingValues? = null,
 ) {
     SearchIndexer.record(key, title, staticSummary ?: summary, icon)
     item(key = key, contentType = "ItemMultiSelectList") {
-        ItemMultiSelectList(
-            value = value,
-            onValueChange = onValueChange,
-            values = values,
-            title = title,
-            modifier = modifier.then(highlightedKeyModifier(key)),
-            enabled = enabled,
-            icon = icon,
-            summary = summary,
-            valueToText = valueToText,
-            item = item,
-        )
+        cardedItem(
+            modifier = modifier,
+            key = key,
+            style = style,
+            cardColor = cardColor,
+            cardElevation = cardElevation,
+            cardBorder = cardBorder,
+            shape = shape,
+            outerPadding = outerPadding,
+        ) { rowModifier ->
+            ItemMultiSelectList(
+                value = value,
+                onValueChange = onValueChange,
+                values = values,
+                title = title,
+                modifier = rowModifier,
+                enabled = enabled,
+                icon = icon,
+                summary = summary,
+                valueToText = valueToText,
+                item = item,
+            )
+        }
     }
+}
+
+/**
+ * Adds a multi-select list preference item to a [group] (a [GroupScope]): the row joins the
+ * group and is drawn in the group's card — the group's `style`, `shape` and spacing apply,
+ * so this overload takes no [modifier] and no card parameters. Parameter semantics match
+ * the [itemMultiSelectList] ([LazyListScope]) overloads.
+ */
+public fun <T> GroupScope.itemMultiSelectList(
+    key: String,
+    defaultValue: Set<T>,
+    values: List<T>,
+    title: String,
+    rememberState: @Composable () -> MutableState<Set<T>> = { rememberValue(key, defaultValue) },
+    enabled: (Set<T>) -> Boolean = { true },
+    icon: @Composable ((Set<T>) -> Unit)? = null,
+    summary: ((Set<T>) -> String?)? = null,
+    staticSummary: String? = null,
+    valueToText: @Composable (T) -> AnnotatedString = { AnnotatedString(it.toString()) },
+    item: @Composable (value: T, currentValues: Set<T>, onToggle: (Boolean) -> Unit) -> Unit =
+        ItemMultiSelectListDefaults.item(valueToText),
+) {
+    items.add(
+        GroupItem(
+            title = title,
+            summary = staticSummary,
+            icon = icon?.let { itemIcon -> @Composable { itemIcon(rememberState().value) } },
+            content = {
+                val state = rememberState()
+                val value by state
+                ItemMultiSelectList(
+                    state = state,
+                    values = values,
+                    title = title,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = enabled,
+                    icon = icon,
+                    summary = summary,
+                    valueToText = valueToText,
+                    item = item,
+                )
+            },
+        )
+    )
+}
+
+/**
+ * Adds a multi-select list preference item to a [group] (a [GroupScope]); see the
+ * [itemMultiSelectList] ([GroupScope]) overload for the contract.
+ */
+public fun <T> GroupScope.itemMultiSelectList(
+    key: String,
+    value: Set<T>,
+    onValueChange: (Set<T>) -> Unit,
+    values: List<T>,
+    title: String,
+    enabled: Boolean = true,
+    icon: @Composable (() -> Unit)? = null,
+    summary: String? = null,
+    staticSummary: String? = null,
+    valueToText: @Composable (T) -> AnnotatedString = { AnnotatedString(it.toString()) },
+    item: @Composable (value: T, currentValues: Set<T>, onToggle: (Boolean) -> Unit) -> Unit =
+        ItemMultiSelectListDefaults.item(valueToText),
+) {
+    items.add(
+        GroupItem(
+            title = title,
+            summary = staticSummary ?: summary,
+            icon = icon,
+            content = {
+                ItemMultiSelectList(
+                    value = value,
+                    onValueChange = onValueChange,
+                    values = values,
+                    title = title,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = enabled,
+                    icon = icon,
+                    summary = summary,
+                    valueToText = valueToText,
+                    item = item,
+                )
+            },
+        )
+    )
 }
 
 @Composable

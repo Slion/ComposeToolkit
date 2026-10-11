@@ -74,6 +74,32 @@ class SearchIndexTest {
     }
 
     @Test
+    fun `group preference builders join the group with group-prefixed keys`() {
+        // Inside group { } the preference builders must resolve to their GroupScope
+        // overloads (the row joins the group), not the enclosing LazyListScope — the
+        // group-prefixed keys are the proof.
+        val page =
+            Page(
+                id = "grouped",
+                title = "Grouped",
+                content = {
+                    group(key = "grp") {
+                        itemSwitch(key = "grp_switch", value = true, onValueChange = {}, title = "Group switch")
+                        itemSlider(key = "grp_slider", value = 0.5f, onValueChange = {}, title = "Group slider")
+                    }
+                },
+            )
+        val index = buildSearchIndex(page)
+        assertEquals(
+            listOf(
+                SearchIndexEntry("grp:0", "Group switch", null, 0),
+                SearchIndexEntry("grp:1", "Group slider", null, 1),
+            ),
+            index["grouped"],
+        )
+    }
+
+    @Test
     fun `the structure records page rows in content order with their row index`() {
         assertEquals(listOf("settings", "nested"), root.structure.subPages.map { it.page.id })
         assertEquals(listOf(0, 1), root.structure.subPages.map { it.index })

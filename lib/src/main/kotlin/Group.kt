@@ -155,6 +155,11 @@ public data class GroupItem(
 /**
  * Scope for [group]. Use [item] to add an item; each item is drawn in its own card, and the
  * items are indexed for search.
+ *
+ * The preference builders ([itemList], [itemSlider], [itemSwitch], …) are also available as
+ * overloads on this scope: inside `group { }` a call to one resolves to the [GroupScope]
+ * version, and the row joins the group — drawn in the group's card, with the group's
+ * `style`, `shape`, corner and spacing rules.
  */
 public class GroupScope {
     internal val items = mutableListOf<GroupItem>()
@@ -342,9 +347,10 @@ internal object GroupKeys {
  * used.
  * @param outerPadding Clearance between the group and its container. If null,
  * `ItemTheme.horizontalSpacing` is used on all sides.
- * @param content Content of the group. Use [GroupScope.item] to add items. The content is
- * built eagerly (not composed) so that [buildSearchIndex] can read each item's title/summary
- * and index the group's items.
+ * @param content Content of the group. Use [GroupScope.item] or a preference builder (a
+ * [GroupScope] overload, e.g. [GroupScope.itemList]) to add items. The content is built
+ * eagerly (not composed) so that [buildSearchIndex] can read each item's title/summary and
+ * index the group's items.
  */
 public fun LazyListScope.group(
     key: String? = null,

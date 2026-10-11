@@ -16,11 +16,14 @@
 
 package net.slions.compose.toolkit
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.material3.CardElevation
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -35,6 +38,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.res.stringResource
@@ -58,6 +63,12 @@ public inline fun <T> LazyListScope.itemTextField(
         @Composable
         (value: TextFieldValue, onValueChange: (TextFieldValue) -> Unit, onOk: () -> Unit) -> Unit =
         ItemTextFieldDefaults.TextField,
+    style: CardStyle? = null,
+    cardColor: Color? = null,
+    cardElevation: CardElevation? = null,
+    cardBorder: BorderStroke? = null,
+    shape: Shape? = null,
+    outerPadding: PaddingValues? = null,
 ) {
     // The icon depends on the value, which is only known in composition: the result
     // item re-reads the item's (store-backed) state to render it with the current value.
@@ -68,19 +79,30 @@ public inline fun <T> LazyListScope.itemTextField(
         icon?.let { itemIcon -> @Composable { itemIcon(rememberState().value) } },
     )
     item(key = key, contentType = "ItemTextField") {
-        val state = rememberState()
-        val value by state
-        ItemTextField(
-            state = state,
-            title = title,
-            textToValue = textToValue,
-            modifier = modifier.then(highlightedKeyModifier(key)),
-            enabled = enabled,
-            icon = icon,
-            summary = summary,
-            valueToText = valueToText,
-            textField = textField,
-        )
+        cardedItem(
+            modifier = modifier,
+            key = key,
+            style = style,
+            cardColor = cardColor,
+            cardElevation = cardElevation,
+            cardBorder = cardBorder,
+            shape = shape,
+            outerPadding = outerPadding,
+        ) { rowModifier ->
+            val state = rememberState()
+            val value by state
+            ItemTextField(
+                state = state,
+                title = title,
+                textToValue = textToValue,
+                modifier = rowModifier,
+                enabled = enabled,
+                icon = icon,
+                summary = summary,
+                valueToText = valueToText,
+                textField = textField,
+            )
+        }
     }
 }
 
@@ -100,22 +122,128 @@ public fun <T> LazyListScope.itemTextField(
         @Composable
         (value: TextFieldValue, onValueChange: (TextFieldValue) -> Unit, onOk: () -> Unit) -> Unit =
         ItemTextFieldDefaults.TextField,
+    style: CardStyle? = null,
+    cardColor: Color? = null,
+    cardElevation: CardElevation? = null,
+    cardBorder: BorderStroke? = null,
+    shape: Shape? = null,
+    outerPadding: PaddingValues? = null,
 ) {
     SearchIndexer.record(key, title, staticSummary ?: summary, icon)
     item(key = key, contentType = "ItemTextField") {
-        ItemTextField(
-            value = value,
-            onValueChange = onValueChange,
-            title = title,
-            textToValue = textToValue,
-            modifier = modifier.then(highlightedKeyModifier(key)),
-            enabled = enabled,
-            icon = icon,
-            summary = summary,
-            valueToText = valueToText,
-            textField = textField,
-        )
+        cardedItem(
+            modifier = modifier,
+            key = key,
+            style = style,
+            cardColor = cardColor,
+            cardElevation = cardElevation,
+            cardBorder = cardBorder,
+            shape = shape,
+            outerPadding = outerPadding,
+        ) { rowModifier ->
+            ItemTextField(
+                value = value,
+                onValueChange = onValueChange,
+                title = title,
+                textToValue = textToValue,
+                modifier = rowModifier,
+                enabled = enabled,
+                icon = icon,
+                summary = summary,
+                valueToText = valueToText,
+                textField = textField,
+            )
+        }
     }
+}
+
+/**
+ * Adds a text-field preference item to a [group] (a [GroupScope]): the row joins the group
+ * and is drawn in the group's card — the group's `style`, `shape` and spacing apply, so
+ * this overload takes no [modifier] and no card parameters. Parameter semantics match the
+ * [itemTextField] ([LazyListScope]) overloads.
+ */
+public fun <T> GroupScope.itemTextField(
+    key: String,
+    defaultValue: T,
+    title: String,
+    textToValue: (String) -> T?,
+    rememberState: @Composable () -> MutableState<T> = { rememberValue(key, defaultValue) },
+    enabled: (T) -> Boolean = { true },
+    icon: @Composable ((T) -> Unit)? = null,
+    summary: ((T) -> String?)? = null,
+    staticSummary: String? = null,
+    valueToText: (T) -> String = { it.toString() },
+    textField:
+        @Composable
+        (value: TextFieldValue, onValueChange: (TextFieldValue) -> Unit, onOk: () -> Unit) -> Unit =
+        ItemTextFieldDefaults.TextField,
+) {
+    items.add(
+        GroupItem(
+            title = title,
+            summary = staticSummary,
+            icon = icon?.let { itemIcon -> @Composable { itemIcon(rememberState().value) } },
+            content = {
+                val state = rememberState()
+                val value by state
+                ItemTextField(
+                    state = state,
+                    title = title,
+                    textToValue = textToValue,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = enabled,
+                    icon = icon,
+                    summary = summary,
+                    valueToText = valueToText,
+                    textField = textField,
+                )
+            },
+        )
+    )
+}
+
+/**
+ * Adds a text-field preference item to a [group] (a [GroupScope]); see the [itemTextField]
+ * ([GroupScope]) overload for the contract.
+ */
+public fun <T> GroupScope.itemTextField(
+    key: String,
+    value: T,
+    onValueChange: (T) -> Unit,
+    title: String,
+    textToValue: (String) -> T?,
+    enabled: Boolean = true,
+    icon: @Composable (() -> Unit)? = null,
+    summary: String? = null,
+    staticSummary: String? = null,
+    valueToText: (T) -> String = { it.toString() },
+    textField:
+        @Composable
+        (value: TextFieldValue, onValueChange: (TextFieldValue) -> Unit, onOk: () -> Unit) -> Unit =
+        ItemTextFieldDefaults.TextField,
+) {
+    items.add(
+        GroupItem(
+            title = title,
+            summary = staticSummary ?: summary,
+            icon = icon,
+            content = {
+                ItemTextField(
+                    value = value,
+                    onValueChange = onValueChange,
+                    title = title,
+                    textToValue = textToValue,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = enabled,
+                    icon = icon,
+                    summary = summary,
+                    valueToText = valueToText,
+                    textField = textField,
+                )
+            },
+        )
+    )
 }
 
 @Composable

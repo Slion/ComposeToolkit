@@ -16,12 +16,18 @@
 
 package net.slions.compose.toolkit
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.material3.CardElevation
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
 
 public fun LazyListScope.itemActionIconButton(
@@ -36,21 +42,78 @@ public fun LazyListScope.itemActionIconButton(
     onClick: (() -> Unit)? = null,
     iconButtonEnabled: Boolean = enabled,
     onIconButtonClick: () -> Unit,
+    style: CardStyle? = null,
+    cardColor: Color? = null,
+    cardElevation: CardElevation? = null,
+    cardBorder: BorderStroke? = null,
+    shape: Shape? = null,
+    outerPadding: PaddingValues? = null,
 ) {
     SearchIndexer.record(key, title, staticSummary ?: summary, icon)
     item(key = key, contentType = "ItemActionIconButton") {
-        ItemActionIconButton(
-            title = title,
-            iconButtonIcon = iconButtonIcon,
-            modifier = modifier.then(highlightedKeyModifier(key)),
-            enabled = enabled,
-            icon = icon,
-            summary = summary,
-            onClick = onClick,
-            iconButtonEnabled = iconButtonEnabled,
-            onIconButtonClick = onIconButtonClick,
-        )
+        cardedItem(
+            modifier = modifier,
+            key = key,
+            style = style,
+            cardColor = cardColor,
+            cardElevation = cardElevation,
+            cardBorder = cardBorder,
+            shape = shape,
+            outerPadding = outerPadding,
+        ) { rowModifier ->
+            ItemActionIconButton(
+                title = title,
+                iconButtonIcon = iconButtonIcon,
+                modifier = rowModifier,
+                enabled = enabled,
+                icon = icon,
+                summary = summary,
+                onClick = onClick,
+                iconButtonEnabled = iconButtonEnabled,
+                onIconButtonClick = onIconButtonClick,
+            )
+        }
     }
+}
+
+/**
+ * Adds an action icon button item to a [group] (a [GroupScope]): the row joins the group
+ * and is drawn in the group's card — the group's `style`, `shape` and spacing apply, so
+ * this overload takes no [modifier] and no card parameters. Parameter semantics match the
+ * [itemActionIconButton] ([LazyListScope]) overload.
+ */
+public fun GroupScope.itemActionIconButton(
+    key: String,
+    title: String,
+    iconButtonIcon: @Composable () -> Unit,
+    enabled: Boolean = true,
+    icon: @Composable (() -> Unit)? = null,
+    summary: String? = null,
+    staticSummary: String? = null,
+    onClick: (() -> Unit)? = null,
+    iconButtonEnabled: Boolean = enabled,
+    onIconButtonClick: () -> Unit,
+) {
+    items.add(
+        GroupItem(
+            title = title,
+            summary = staticSummary ?: summary,
+            icon = icon,
+            content = {
+                ItemActionIconButton(
+                    title = title,
+                    iconButtonIcon = iconButtonIcon,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = enabled,
+                    icon = icon,
+                    summary = summary,
+                    onClick = onClick,
+                    iconButtonEnabled = iconButtonEnabled,
+                    onIconButtonClick = onIconButtonClick,
+                )
+            },
+        )
+    )
 }
 
 @Composable

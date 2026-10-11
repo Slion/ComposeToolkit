@@ -16,8 +16,10 @@
 
 package net.slions.compose.toolkit
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,6 +27,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.material3.CardElevation
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Slider
@@ -41,6 +44,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
@@ -60,6 +65,16 @@ import androidx.compose.ui.unit.dp
  * @param summary The summary text, based on the current value, shown above the slider.
  * @param staticSummary A static summary used in the [buildSearchIndex] index.
  * @param valueText The text shown next to the slider, based on the current value.
+ * @param style When non-null, the item is drawn in its own card of this style (a card is a
+ * style, not a container); [CardStyle.None] is equivalent to null — plain row.
+ * @param cardColor Card background color. Only applies with [style]; if null, the default
+ * container color of [style] is used.
+ * @param cardElevation Card elevation. Only applies to [CardStyle.Elevated].
+ * @param cardBorder Card border. Only applies to [CardStyle.Outlined].
+ * @param shape Card shape. Only applies with [style]; if null, `MaterialTheme.shapes.medium`.
+ * @param outerPadding Clearance between the card and its container. Only applies with
+ * [style]; if null, the theme's `horizontalSpacing` on the start/end and a small vertical
+ * gap (2.dp) top/bottom.
  */
 public inline fun LazyListScope.itemSlider(
     key: String,
@@ -79,6 +94,12 @@ public inline fun LazyListScope.itemSlider(
     noinline summary: ((Float) -> String?)? = null,
     staticSummary: String? = null,
     noinline valueText: ((Float) -> String?)? = null,
+    style: CardStyle? = null,
+    cardColor: Color? = null,
+    cardElevation: CardElevation? = null,
+    cardBorder: BorderStroke? = null,
+    shape: Shape? = null,
+    outerPadding: PaddingValues? = null,
 ) {
     // The icon depends on the value, which is only known in composition: the result
     // item re-reads the item's (store-backed) state to render it with the current value.
@@ -89,22 +110,33 @@ public inline fun LazyListScope.itemSlider(
         icon?.let { itemIcon -> @Composable { itemIcon(rememberState().value) } },
     )
     item(key = key, contentType = "ItemSlider") {
-        val state = rememberState()
-        val value by state
-        val sliderState = rememberSliderState(value)
-        val sliderValue by sliderState
-        ItemSlider(
-            state = state,
-            title = title,
-            modifier = modifier.then(highlightedKeyModifier(key)),
-            valueRange = valueRange,
-            valueSteps = valueSteps,
-            sliderState = sliderState,
-            enabled = enabled,
-            icon = icon,
-            summary = summary,
-            valueText = valueText,
-        )
+        cardedItem(
+            modifier = modifier,
+            key = key,
+            style = style,
+            cardColor = cardColor,
+            cardElevation = cardElevation,
+            cardBorder = cardBorder,
+            shape = shape,
+            outerPadding = outerPadding,
+        ) { rowModifier ->
+            val state = rememberState()
+            val value by state
+            val sliderState = rememberSliderState(value)
+            val sliderValue by sliderState
+            ItemSlider(
+                state = state,
+                title = title,
+                modifier = rowModifier,
+                valueRange = valueRange,
+                valueSteps = valueSteps,
+                sliderState = sliderState,
+                enabled = enabled,
+                icon = icon,
+                summary = summary,
+                valueText = valueText,
+            )
+        }
     }
 }
 
@@ -123,23 +155,40 @@ public fun LazyListScope.itemSlider(
     summary: String? = null,
     staticSummary: String? = null,
     valueText: ((Float) -> String?)? = null,
+    style: CardStyle? = null,
+    cardColor: Color? = null,
+    cardElevation: CardElevation? = null,
+    cardBorder: BorderStroke? = null,
+    shape: Shape? = null,
+    outerPadding: PaddingValues? = null,
 ) {
     SearchIndexer.record(key, title, staticSummary ?: summary, icon)
     item(key = key, contentType = "ItemSlider") {
-        ItemSlider(
-            value = value,
-            onValueChange = onValueChange,
-            sliderValue = sliderValue,
-            onSliderValueChange = onSliderValueChange,
-            title = title,
-            modifier = modifier.then(highlightedKeyModifier(key)),
-            valueRange = valueRange,
-            valueSteps = valueSteps,
-            enabled = enabled,
-            icon = icon,
-            summary = summary,
-            valueText = valueText,
-        )
+        cardedItem(
+            modifier = modifier,
+            key = key,
+            style = style,
+            cardColor = cardColor,
+            cardElevation = cardElevation,
+            cardBorder = cardBorder,
+            shape = shape,
+            outerPadding = outerPadding,
+        ) { rowModifier ->
+            ItemSlider(
+                value = value,
+                onValueChange = onValueChange,
+                sliderValue = sliderValue,
+                onSliderValueChange = onSliderValueChange,
+                title = title,
+                modifier = rowModifier,
+                valueRange = valueRange,
+                valueSteps = valueSteps,
+                enabled = enabled,
+                icon = icon,
+                summary = summary,
+                valueText = valueText,
+            )
+        }
     }
 }
 
@@ -168,6 +217,16 @@ public fun LazyListScope.itemSlider(
  *   [summary] is used.
  * @param valueText Formats the live thumb value for the title postfix.
  * @param live Whether to commit while dragging (true) or only on release (false).
+ * @param style When non-null, the item is drawn in its own card of this style (a card is a
+ * style, not a container); [CardStyle.None] is equivalent to null — plain row.
+ * @param cardColor Card background color. Only applies with [style]; if null, the default
+ * container color of [style] is used.
+ * @param cardElevation Card elevation. Only applies to [CardStyle.Elevated].
+ * @param cardBorder Card border. Only applies to [CardStyle.Outlined].
+ * @param shape Card shape. Only applies with [style]; if null, `MaterialTheme.shapes.medium`.
+ * @param outerPadding Clearance between the card and its container. Only applies with
+ * [style]; if null, the theme's `horizontalSpacing` on the start/end and a small vertical
+ * gap (2.dp) top/bottom.
  */
 public fun LazyListScope.itemSlider(
     key: String,
@@ -183,32 +242,194 @@ public fun LazyListScope.itemSlider(
     staticSummary: String? = null,
     valueText: ((Float) -> String?)? = null,
     live: Boolean = false,
+    style: CardStyle? = null,
+    cardColor: Color? = null,
+    cardElevation: CardElevation? = null,
+    cardBorder: BorderStroke? = null,
+    shape: Shape? = null,
+    outerPadding: PaddingValues? = null,
 ) {
     SearchIndexer.record(key, title, staticSummary ?: summary, icon)
     item(key = key, contentType = "ItemSlider") {
-        // The thumb position, its own stable state; see the KDoc.
-        val thumb = remember { mutableFloatStateOf(value) }
-        ItemSlider(
-            value = value,
-            onValueChange = onValueChange,
-            sliderValue = thumb.floatValue,
-            onSliderValueChange = {
-                thumb.floatValue = it
-                if (live) onValueChange(it)
-            },
-            title = title,
-            modifier = modifier.then(highlightedKeyModifier(key)),
-            valueRange = valueRange,
-            valueSteps = valueSteps,
-            enabled = enabled,
-            icon = icon,
-            summary = summary,
-            titlePostfix =
-                valueText?.let { text ->
-                    @Composable { text(thumb.floatValue)?.let { Text(it) } }
+        cardedItem(
+            modifier = modifier,
+            key = key,
+            style = style,
+            cardColor = cardColor,
+            cardElevation = cardElevation,
+            cardBorder = cardBorder,
+            shape = shape,
+            outerPadding = outerPadding,
+        ) { rowModifier ->
+            // The thumb position, its own stable state; see the KDoc.
+            val thumb = remember { mutableFloatStateOf(value) }
+            ItemSlider(
+                value = value,
+                onValueChange = onValueChange,
+                sliderValue = thumb.floatValue,
+                onSliderValueChange = {
+                    thumb.floatValue = it
+                    if (live) onValueChange(it)
                 },
-        )
+                title = title,
+                modifier = rowModifier,
+                valueRange = valueRange,
+                valueSteps = valueSteps,
+                enabled = enabled,
+                icon = icon,
+                summary = summary,
+                titlePostfix =
+                    valueText?.let { text ->
+                        @Composable { text(thumb.floatValue)?.let { Text(it) } }
+                    },
+            )
+        }
     }
+}
+
+/**
+ * Adds a slider preference item to a [group] (a [GroupScope]): the row joins the group and
+ * is drawn in the group's card — the group's `style`, `shape` and spacing apply, so this
+ * overload takes no [modifier] and no card parameters. Parameter semantics match the
+ * [itemSlider] ([LazyListScope]) overloads.
+ */
+public fun GroupScope.itemSlider(
+    key: String,
+    defaultValue: Float,
+    title: String,
+    rememberState: @Composable () -> MutableState<Float> = { rememberValue(key, defaultValue) },
+    valueRange: ClosedFloatingPointRange<Float> = 0f..1f,
+    valueSteps: Int = 0,
+    rememberSliderState: @Composable (Float) -> MutableFloatState = {
+        remember { mutableFloatStateOf(it) }
+    },
+    enabled: (Float) -> Boolean = { true },
+    icon: @Composable ((Float) -> Unit)? = null,
+    summary: ((Float) -> String?)? = null,
+    staticSummary: String? = null,
+    valueText: ((Float) -> String?)? = null,
+) {
+    items.add(
+        GroupItem(
+            title = title,
+            summary = staticSummary,
+            icon = icon?.let { itemIcon -> @Composable { itemIcon(rememberState().value) } },
+            content = {
+                val state = rememberState()
+                val value by state
+                val sliderState = rememberSliderState(value)
+                val sliderValue by sliderState
+                ItemSlider(
+                    state = state,
+                    title = title,
+                    modifier = Modifier.fillMaxWidth(),
+                    valueRange = valueRange,
+                    valueSteps = valueSteps,
+                    sliderState = sliderState,
+                    enabled = enabled,
+                    icon = icon,
+                    summary = summary,
+                    valueText = valueText,
+                )
+            },
+        )
+    )
+}
+
+/**
+ * Adds a slider preference item to a [group] (a [GroupScope]); see the [itemSlider]
+ * ([GroupScope]) overload for the contract.
+ */
+public fun GroupScope.itemSlider(
+    key: String,
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    sliderValue: Float,
+    onSliderValueChange: (Float) -> Unit,
+    title: String,
+    valueRange: ClosedFloatingPointRange<Float> = 0f..1f,
+    valueSteps: Int = 0,
+    enabled: Boolean = true,
+    icon: @Composable (() -> Unit)? = null,
+    summary: String? = null,
+    staticSummary: String? = null,
+    valueText: ((Float) -> String?)? = null,
+) {
+    items.add(
+        GroupItem(
+            title = title,
+            summary = staticSummary ?: summary,
+            icon = icon,
+            content = {
+                ItemSlider(
+                    value = value,
+                    onValueChange = onValueChange,
+                    sliderValue = sliderValue,
+                    onSliderValueChange = onSliderValueChange,
+                    title = title,
+                    modifier = Modifier.fillMaxWidth(),
+                    valueRange = valueRange,
+                    valueSteps = valueSteps,
+                    enabled = enabled,
+                    icon = icon,
+                    summary = summary,
+                    valueText = valueText,
+                )
+            },
+        )
+    )
+}
+
+/**
+ * Adds a slider preference item to a [group] (a [GroupScope]); the thumb position is the
+ * item's own stable state and [live] commits while dragging, as in the [itemSlider]
+ * ([LazyListScope]) overload.
+ */
+public fun GroupScope.itemSlider(
+    key: String,
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    title: String,
+    valueRange: ClosedFloatingPointRange<Float> = 0f..1f,
+    valueSteps: Int = 0,
+    enabled: Boolean = true,
+    icon: @Composable (() -> Unit)? = null,
+    summary: String? = null,
+    staticSummary: String? = null,
+    valueText: ((Float) -> String?)? = null,
+    live: Boolean = false,
+) {
+    items.add(
+        GroupItem(
+            title = title,
+            summary = staticSummary ?: summary,
+            icon = icon,
+            content = {
+                // The thumb position, its own stable state; see the [itemSlider] KDoc.
+                val thumb = remember { mutableFloatStateOf(value) }
+                ItemSlider(
+                    value = value,
+                    onValueChange = onValueChange,
+                    sliderValue = thumb.floatValue,
+                    onSliderValueChange = {
+                        thumb.floatValue = it
+                        if (live) onValueChange(it)
+                    },
+                    title = title,
+                    modifier = Modifier.fillMaxWidth(),
+                    valueRange = valueRange,
+                    valueSteps = valueSteps,
+                    enabled = enabled,
+                    icon = icon,
+                    summary = summary,
+                    titlePostfix =
+                        valueText?.let { text ->
+                            @Composable { text(thumb.floatValue)?.let { Text(it) } }
+                        },
+                )
+            },
+        )
+    )
 }
 
 /**

@@ -105,6 +105,7 @@ Built-in item types include:
 - [`ItemSlider`](lib/src/main/kotlin/ItemSlider.kt)
 - [`ItemSwitch`](lib/src/main/kotlin/ItemSwitch.kt)
 - [`ItemTextField`](lib/src/main/kotlin/ItemTextField.kt)
+- [`ItemColorList`](lib/src/main/kotlin/ItemColorList.kt) (a color picker row with a swatch dialog)
 - [`ItemActionIconButton`](lib/src/main/kotlin/ItemActionIconButton.kt)
 - [`ItemActionsSwitch`](lib/src/main/kotlin/ItemActionsSwitch.kt)
 
@@ -174,6 +175,10 @@ Catalog(
 ```
 
 The built-in presets are `PageTransition.None` (instant swap, the pre-animation behavior), `Fade`, `Slide`, and `SlideFade`. Any other motion can be supplied with `PageTransition.Custom(durationMs, easing, transform)`, where `transform` resolves a [`PageTransitionEndpoints`](lib/src/main/kotlin/PageTransition.kt) — the incoming content's start offset/alpha and the outgoing content's end offset/alpha — for the navigation direction and the pane's width.
+
+### Cards
+
+A card is a **style, not a container**: it is applied to an item (`item` with `style`) or to the items of a `group` (`group` with `style`), never built as a separate thing. `group` draws each item in its own card — first item with rounded top corners, last with rounded bottom, the middle square — so the group reads as a single card split into rows. The styles are `CardStyle.Filled` (the group default), `Elevated`, `Outlined`, and `None` (plain rows). Every built-in preference builder (`itemList`, `itemSwitch`, …) accepts the same `style`/card parameters, so any row can be carded in its own single call — and the same builders are available inside `group { }`, where the row joins the group's split card. A group item or a carded `item` can also draw any custom composable inside its card. See [Cards](docs/usage/cards.md).
 
 ### Nested pages
 

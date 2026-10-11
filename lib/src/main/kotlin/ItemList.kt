@@ -16,8 +16,10 @@
 
 package net.slions.compose.toolkit
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -29,6 +31,7 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.material3.CardElevation
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
@@ -44,6 +47,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
@@ -70,6 +75,16 @@ public enum class ItemListType {
  * @param type The type of the list, either an alert dialog or a dropdown menu.
  * @param valueToText How a value is rendered in the list.
  * @param item How a list item is rendered.
+ * @param style When non-null, the item is drawn in its own card of this style (a card is a
+ * style, not a container); [CardStyle.None] is equivalent to null — plain row.
+ * @param cardColor Card background color. Only applies with [style]; if null, the default
+ * container color of [style] is used.
+ * @param cardElevation Card elevation. Only applies to [CardStyle.Elevated].
+ * @param cardBorder Card border. Only applies to [CardStyle.Outlined].
+ * @param shape Card shape. Only applies with [style]; if null, `MaterialTheme.shapes.medium`.
+ * @param outerPadding Clearance between the card and its container. Only applies with
+ * [style]; if null, the theme's `horizontalSpacing` on the start/end and a small vertical
+ * gap (2.dp) top/bottom.
  */
 public inline fun <T> LazyListScope.itemList(
     key: String,
@@ -88,6 +103,12 @@ public inline fun <T> LazyListScope.itemList(
     noinline valueToText: @Composable (T) -> AnnotatedString = { AnnotatedString(it.toString()) },
     noinline item: @Composable (value: T, currentValue: T, onClick: () -> Unit) -> Unit =
         ItemListDefaults.item(type, valueToText),
+    style: CardStyle? = null,
+    cardColor: Color? = null,
+    cardElevation: CardElevation? = null,
+    cardBorder: BorderStroke? = null,
+    shape: Shape? = null,
+    outerPadding: PaddingValues? = null,
 ) {
     // The icon depends on the value, which is only known in composition: the result
     // item re-reads the item's (store-backed) state to render it with the current value.
@@ -98,20 +119,31 @@ public inline fun <T> LazyListScope.itemList(
         icon?.let { itemIcon -> @Composable { itemIcon(rememberState().value) } },
     )
     item(key = key, contentType = "ItemList") {
-        val state = rememberState()
-        val value by state
-        ItemList(
-            state = state,
-            values = values,
-            title = title,
-            modifier = modifier.then(highlightedKeyModifier(key)),
-            enabled = enabled,
-            icon = icon,
-            summary = summary,
-            type = type,
-            valueToText = valueToText,
-            item = item,
-        )
+        cardedItem(
+            modifier = modifier,
+            key = key,
+            style = style,
+            cardColor = cardColor,
+            cardElevation = cardElevation,
+            cardBorder = cardBorder,
+            shape = shape,
+            outerPadding = outerPadding,
+        ) { rowModifier ->
+            val state = rememberState()
+            val value by state
+            ItemList(
+                state = state,
+                values = values,
+                title = title,
+                modifier = rowModifier,
+                enabled = enabled,
+                icon = icon,
+                summary = summary,
+                type = type,
+                valueToText = valueToText,
+                item = item,
+            )
+        }
     }
 }
 
@@ -131,6 +163,16 @@ public inline fun <T> LazyListScope.itemList(
  * @param type The type of the list, either an alert dialog or a dropdown menu.
  * @param valueToText How a value is rendered in the list.
  * @param item How a list item is rendered.
+ * @param style When non-null, the item is drawn in its own card of this style (a card is a
+ * style, not a container); [CardStyle.None] is equivalent to null — plain row.
+ * @param cardColor Card background color. Only applies with [style]; if null, the default
+ * container color of [style] is used.
+ * @param cardElevation Card elevation. Only applies to [CardStyle.Elevated].
+ * @param cardBorder Card border. Only applies to [CardStyle.Outlined].
+ * @param shape Card shape. Only applies with [style]; if null, `MaterialTheme.shapes.medium`.
+ * @param outerPadding Clearance between the card and its container. Only applies with
+ * [style]; if null, the theme's `horizontalSpacing` on the start/end and a small vertical
+ * gap (2.dp) top/bottom.
  */
 public fun <T> LazyListScope.itemList(
     key: String,
@@ -147,23 +189,129 @@ public fun <T> LazyListScope.itemList(
     valueToText: @Composable (T) -> AnnotatedString = { AnnotatedString(it.toString()) },
     item: @Composable (value: T, currentValue: T, onClick: () -> Unit) -> Unit =
         ItemListDefaults.item(type, valueToText),
+    style: CardStyle? = null,
+    cardColor: Color? = null,
+    cardElevation: CardElevation? = null,
+    cardBorder: BorderStroke? = null,
+    shape: Shape? = null,
+    outerPadding: PaddingValues? = null,
 ) {
     SearchIndexer.record(key, title, staticSummary ?: summary, icon)
     item(key = key, contentType = "ItemList") {
-        ItemList(
-            value = value,
-            onValueChange = onValueChange,
-            values = values,
-            title = title,
-            modifier = modifier.then(highlightedKeyModifier(key)),
-            enabled = enabled,
-            icon = icon,
-            summary = summary,
-            type = type,
-            valueToText = valueToText,
-            item = item,
-        )
+        cardedItem(
+            modifier = modifier,
+            key = key,
+            style = style,
+            cardColor = cardColor,
+            cardElevation = cardElevation,
+            cardBorder = cardBorder,
+            shape = shape,
+            outerPadding = outerPadding,
+        ) { rowModifier ->
+            ItemList(
+                value = value,
+                onValueChange = onValueChange,
+                values = values,
+                title = title,
+                modifier = rowModifier,
+                enabled = enabled,
+                icon = icon,
+                summary = summary,
+                type = type,
+                valueToText = valueToText,
+                item = item,
+            )
+        }
     }
+}
+
+/**
+ * Adds a list preference item to a [group] (a [GroupScope]): the row joins the group and is
+ * drawn in the group's card — the group's `style`, `shape` and spacing apply, so this
+ * overload takes no [modifier] and no card parameters. Parameter semantics match the
+ * [itemList] ([LazyListScope]) overloads.
+ */
+public fun <T> GroupScope.itemList(
+    key: String,
+    defaultValue: T,
+    values: List<T>,
+    title: String,
+    rememberState: @Composable () -> MutableState<T> = { rememberValue(key, defaultValue) },
+    enabled: (T) -> Boolean = { true },
+    icon: @Composable ((T) -> Unit)? = null,
+    summary: ((T) -> String?)? = null,
+    staticSummary: String? = null,
+    type: ItemListType = ItemListType.ALERT_DIALOG,
+    valueToText: @Composable (T) -> AnnotatedString = { AnnotatedString(it.toString()) },
+    item: @Composable (value: T, currentValue: T, onClick: () -> Unit) -> Unit =
+        ItemListDefaults.item(type, valueToText),
+) {
+    items.add(
+        GroupItem(
+            title = title,
+            summary = staticSummary,
+            icon = icon?.let { itemIcon -> @Composable { itemIcon(rememberState().value) } },
+            content = {
+                val state = rememberState()
+                val value by state
+                ItemList(
+                    state = state,
+                    values = values,
+                    title = title,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = enabled,
+                    icon = icon,
+                    summary = summary,
+                    type = type,
+                    valueToText = valueToText,
+                    item = item,
+                )
+            },
+        )
+    )
+}
+
+/**
+ * Adds a list preference item to a [group] (a [GroupScope]); see the [itemList]
+ * ([GroupScope]) overload for the contract.
+ */
+public fun <T> GroupScope.itemList(
+    key: String,
+    value: T,
+    onValueChange: (T) -> Unit,
+    values: List<T>,
+    title: String,
+    enabled: Boolean = true,
+    icon: @Composable (() -> Unit)? = null,
+    summary: String? = null,
+    staticSummary: String? = null,
+    type: ItemListType = ItemListType.ALERT_DIALOG,
+    valueToText: @Composable (T) -> AnnotatedString = { AnnotatedString(it.toString()) },
+    item: @Composable (value: T, currentValue: T, onClick: () -> Unit) -> Unit =
+        ItemListDefaults.item(type, valueToText),
+) {
+    items.add(
+        GroupItem(
+            title = title,
+            summary = staticSummary ?: summary,
+            icon = icon,
+            content = {
+                ItemList(
+                    value = value,
+                    onValueChange = onValueChange,
+                    values = values,
+                    title = title,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = enabled,
+                    icon = icon,
+                    summary = summary,
+                    type = type,
+                    valueToText = valueToText,
+                    item = item,
+                )
+            },
+        )
+    )
 }
 
 @Composable

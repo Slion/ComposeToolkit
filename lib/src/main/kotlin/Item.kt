@@ -94,7 +94,8 @@ import androidx.compose.ui.unit.dp
  * @param shape Card shape. Only applies with [style]; if null, `MaterialTheme.shapes.medium`
  * is used.
  * @param outerPadding Clearance between the card and its container. Only applies with [style];
- * if null, `ItemTheme.horizontalSpacing` is used on all sides.
+ * if null, the theme's `horizontalSpacing` is used on the start/end sides and a small gap
+ * (2.dp) top/bottom, so consecutive carded rows read like a [group]'s rows.
  */
 public fun LazyListScope.item(
     key: String? = null,
@@ -133,7 +134,16 @@ public fun LazyListScope.item(
             )
     }
     item(key = itemKey, contentType = if (page != null) "PageItem" else "Item") {
-        val composeItem: @Composable (Modifier) -> Unit = { m ->
+        cardedItem(
+            modifier = modifier,
+            key = itemKey,
+            style = style,
+            shape = shape,
+            cardColor = cardColor,
+            cardElevation = cardElevation,
+            cardBorder = cardBorder,
+            outerPadding = outerPadding,
+        ) { m ->
             Item(
                 title = itemTitle ?: "",
                 page = page,
@@ -146,29 +156,65 @@ public fun LazyListScope.item(
                 onClick = onClick,
             )
         }
-        if (style != null && style != CardStyle.None) {
-            // A carded item: the card is a style of the item, with the group's outer clearance.
-            val outer = outerPadding ?: PaddingValues(LocalItemTheme.current.horizontalSpacing)
-            Column(
-                modifier =
-                    modifier
-                        .then(highlightedKeyModifier(itemKey))
-                        .fillMaxWidth()
-                        .padding(outer),
+    }
+}
+
+/**
+ * Draws a preference row — [content] — in its own card when [style] is non-null and not
+ * [CardStyle.None] (a card is a style, not a container), or plainly otherwise.
+ *
+ * The card, when any, gets the clearance of [outerPadding] (default the theme's
+ * `horizontalSpacing` on the start/end sides and a small 2.dp gap top/bottom) and the row's
+ * [highlightedKeyModifier] highlight; when plain, the highlight is applied to the row's own
+ * modifier. [content] receives the modifier
+ * to apply to its root: [modifier] (plus the highlight) when plain, or full width in a card.
+ *
+ * Shared by the [item] builder and the built-in preference builders (`itemList`,
+ * `itemSwitch`, …), which all accept the same card parameters.
+ */
+@Composable
+public fun cardedItem(
+    modifier: Modifier,
+    key: String?,
+    style: CardStyle?,
+    shape: Shape? = null,
+    cardColor: Color? = null,
+    cardElevation: CardElevation? = null,
+    cardBorder: BorderStroke? = null,
+    outerPadding: PaddingValues? = null,
+    content: @Composable (Modifier) -> Unit,
+) {
+    if (style != null && style != CardStyle.None) {
+        // A carded row: horizontal clearance from the pane edges, minimal vertical clearance,
+        // so consecutive carded rows sit a small gap apart (like a group's rows), not a full
+        // spacing.
+        val outer =
+            outerPadding
+                ?: PaddingValues(
+                    start = LocalItemTheme.current.horizontalSpacing,
+                    end = LocalItemTheme.current.horizontalSpacing,
+                    top = 2.dp,
+                    bottom = 2.dp,
+                )
+        Column(
+            modifier =
+                modifier
+                    .then(highlightedKeyModifier(key))
+                    .fillMaxWidth()
+                    .padding(outer),
+        ) {
+            CardSurface(
+                style = style,
+                shape = shape,
+                cardColor = cardColor,
+                cardElevation = cardElevation,
+                cardBorder = cardBorder,
             ) {
-                CardSurface(
-                    style = style,
-                    shape = shape,
-                    cardColor = cardColor,
-                    cardElevation = cardElevation,
-                    cardBorder = cardBorder,
-                ) {
-                    composeItem(Modifier.fillMaxWidth())
-                }
+                content(Modifier.fillMaxWidth())
             }
-        } else {
-            composeItem(modifier.then(highlightedKeyModifier(itemKey)))
         }
+    } else {
+        content(modifier.then(highlightedKeyModifier(key)))
     }
 }
 

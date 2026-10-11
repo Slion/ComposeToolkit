@@ -16,9 +16,11 @@
 
 package net.slions.compose.toolkit
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -33,6 +35,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.BasicAlertDialog
+import androidx.compose.material3.CardElevation
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
@@ -48,6 +51,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 
@@ -87,6 +91,16 @@ public data class ColorOption(
  *   wallpaper), so the *current* theme's primary is not a reliable stand-in for "what the
  *   system will use": pass the platform's actual default accent when it differs. When
  *   null, the current theme's primary is used.
+ * @param style When non-null, the item is drawn in its own card of this style (a card is a
+ * style, not a container); [CardStyle.None] is equivalent to null — plain row.
+ * @param cardColor Card background color. Only applies with [style]; if null, the default
+ * container color of [style] is used.
+ * @param cardElevation Card elevation. Only applies to [CardStyle.Elevated].
+ * @param cardBorder Card border. Only applies to [CardStyle.Outlined].
+ * @param shape Card shape. Only applies with [style]; if null, `MaterialTheme.shapes.medium`.
+ * @param outerPadding Clearance between the card and its container. Only applies with
+ * [style]; if null, the theme's `horizontalSpacing` on the start/end and a small vertical
+ * gap (2.dp) top/bottom.
  */
 public fun LazyListScope.itemColorList(
     key: String,
@@ -101,22 +115,81 @@ public fun LazyListScope.itemColorList(
     staticSummary: String? = null,
     dialogCancelLabel: String = "Cancel",
     defaultOptionColor: Color? = null,
+    style: CardStyle? = null,
+    cardColor: Color? = null,
+    cardElevation: CardElevation? = null,
+    cardBorder: BorderStroke? = null,
+    shape: Shape? = null,
+    outerPadding: PaddingValues? = null,
 ) {
     SearchIndexer.record(key, title, staticSummary ?: summary, icon)
     item(key = key, contentType = "ItemColorList") {
-        ItemColorList(
-            value = value,
-            onValueChange = onValueChange,
-            options = options,
-            title = title,
-            modifier = modifier.then(highlightedKeyModifier(key)),
-            enabled = enabled,
-            icon = icon,
-            summary = summary,
-            dialogCancelLabel = dialogCancelLabel,
-            defaultOptionColor = defaultOptionColor,
-        )
+        cardedItem(
+            modifier = modifier,
+            key = key,
+            style = style,
+            cardColor = cardColor,
+            cardElevation = cardElevation,
+            cardBorder = cardBorder,
+            shape = shape,
+            outerPadding = outerPadding,
+        ) { rowModifier ->
+            ItemColorList(
+                value = value,
+                onValueChange = onValueChange,
+                options = options,
+                title = title,
+                modifier = rowModifier,
+                enabled = enabled,
+                icon = icon,
+                summary = summary,
+                dialogCancelLabel = dialogCancelLabel,
+                defaultOptionColor = defaultOptionColor,
+            )
+        }
     }
+}
+
+/**
+ * Adds a color-picker preference item to a [group] (a [GroupScope]): the row joins the group
+ * and is drawn in the group's card — the group's `style`, `shape` and spacing apply, so this
+ * overload takes no [modifier] and no card parameters. Parameter semantics match the
+ * [itemColorList] ([LazyListScope]) overload.
+ */
+public fun GroupScope.itemColorList(
+    key: String,
+    value: Int,
+    onValueChange: (Int) -> Unit,
+    options: List<ColorOption>,
+    title: String,
+    enabled: Boolean = true,
+    icon: @Composable (() -> Unit)? = null,
+    summary: String? = null,
+    staticSummary: String? = null,
+    dialogCancelLabel: String = "Cancel",
+    defaultOptionColor: Color? = null,
+) {
+    items.add(
+        GroupItem(
+            title = title,
+            summary = staticSummary ?: summary,
+            icon = icon,
+            content = {
+                ItemColorList(
+                    value = value,
+                    onValueChange = onValueChange,
+                    options = options,
+                    title = title,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = enabled,
+                    icon = icon,
+                    summary = summary,
+                    dialogCancelLabel = dialogCancelLabel,
+                    defaultOptionColor = defaultOptionColor,
+                )
+            },
+        )
+    )
 }
 
 /**

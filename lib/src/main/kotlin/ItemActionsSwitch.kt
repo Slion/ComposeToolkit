@@ -16,15 +16,20 @@
 
 package net.slions.compose.toolkit
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.material3.CardElevation
 import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
 
 public inline fun LazyListScope.itemActionsSwitch(
@@ -41,6 +46,12 @@ public inline fun LazyListScope.itemActionsSwitch(
     staticSummary: String? = null,
     noinline switchEnabled: (Boolean) -> Boolean = enabled,
     noinline onClick: ((Boolean) -> Unit)? = null,
+    style: CardStyle? = null,
+    cardColor: Color? = null,
+    cardElevation: CardElevation? = null,
+    cardBorder: BorderStroke? = null,
+    shape: Shape? = null,
+    outerPadding: PaddingValues? = null,
 ) {
     // The icon depends on the value, which is only known in composition: the result
     // item re-reads the item's (store-backed) state to render it with the current value.
@@ -51,17 +62,28 @@ public inline fun LazyListScope.itemActionsSwitch(
         icon?.let { itemIcon -> @Composable { itemIcon(rememberState().value) } },
     )
     item(key = key, contentType = "ItemActionsSwitch") {
-        val state = rememberState()
-        ItemActionsSwitch(
-            state = state,
-            title = title,
-            modifier = modifier.then(highlightedKeyModifier(key)),
-            enabled = enabled,
-            icon = icon,
-            summary = summary,
-            switchEnabled = switchEnabled,
-            onClick = onClick,
-        )
+        cardedItem(
+            modifier = modifier,
+            key = key,
+            style = style,
+            cardColor = cardColor,
+            cardElevation = cardElevation,
+            cardBorder = cardBorder,
+            shape = shape,
+            outerPadding = outerPadding,
+        ) { rowModifier ->
+            val state = rememberState()
+            ItemActionsSwitch(
+                state = state,
+                title = title,
+                modifier = rowModifier,
+                enabled = enabled,
+                icon = icon,
+                summary = summary,
+                switchEnabled = switchEnabled,
+                onClick = onClick,
+            )
+        }
     }
 }
 
@@ -77,21 +99,117 @@ public fun LazyListScope.itemActionsSwitch(
     staticSummary: String? = null,
     switchEnabled: Boolean = enabled,
     onClick: (() -> Unit)? = null,
+    style: CardStyle? = null,
+    cardColor: Color? = null,
+    cardElevation: CardElevation? = null,
+    cardBorder: BorderStroke? = null,
+    shape: Shape? = null,
+    outerPadding: PaddingValues? = null,
 ) {
     SearchIndexer.record(key, title, staticSummary ?: summary, icon)
     item(key = key, contentType = "ItemActionsSwitch") {
-        ItemActionsSwitch(
-            value = value,
-            onValueChange = onValueChange,
-            title = title,
-            modifier = modifier.then(highlightedKeyModifier(key)),
-            enabled = enabled,
-            icon = icon,
-            summary = summary,
-            switchEnabled = switchEnabled,
-            onClick = onClick,
-        )
+        cardedItem(
+            modifier = modifier,
+            key = key,
+            style = style,
+            cardColor = cardColor,
+            cardElevation = cardElevation,
+            cardBorder = cardBorder,
+            shape = shape,
+            outerPadding = outerPadding,
+        ) { rowModifier ->
+            ItemActionsSwitch(
+                value = value,
+                onValueChange = onValueChange,
+                title = title,
+                modifier = rowModifier,
+                enabled = enabled,
+                icon = icon,
+                summary = summary,
+                switchEnabled = switchEnabled,
+                onClick = onClick,
+            )
+        }
     }
+}
+
+/**
+ * Adds an actions switch item to a [group] (a [GroupScope]): the row joins the group and is
+ * drawn in the group's card — the group's `style`, `shape` and spacing apply, so this
+ * overload takes no [modifier] and no card parameters. Parameter semantics match the
+ * [itemActionsSwitch] ([LazyListScope]) overloads.
+ */
+public fun GroupScope.itemActionsSwitch(
+    key: String,
+    defaultValue: Boolean,
+    title: String,
+    rememberState: @Composable () -> MutableState<Boolean> = { rememberValue(key, defaultValue) },
+    enabled: (Boolean) -> Boolean = { true },
+    icon: @Composable ((Boolean) -> Unit)? = null,
+    summary: ((Boolean) -> String?)? = null,
+    staticSummary: String? = null,
+    switchEnabled: (Boolean) -> Boolean = enabled,
+    onClick: ((Boolean) -> Unit)? = null,
+) {
+    items.add(
+        GroupItem(
+            title = title,
+            summary = staticSummary,
+            icon = icon?.let { itemIcon -> @Composable { itemIcon(rememberState().value) } },
+            content = {
+                val state = rememberState()
+                val value by state
+                ItemActionsSwitch(
+                    state = state,
+                    title = title,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = enabled,
+                    icon = icon,
+                    summary = summary,
+                    switchEnabled = switchEnabled,
+                    onClick = onClick,
+                )
+            },
+        )
+    )
+}
+
+/**
+ * Adds an actions switch item to a [group] (a [GroupScope]); see the [itemActionsSwitch]
+ * ([GroupScope]) overload for the contract.
+ */
+public fun GroupScope.itemActionsSwitch(
+    key: String,
+    value: Boolean,
+    onValueChange: (Boolean) -> Unit,
+    title: String,
+    enabled: Boolean = true,
+    icon: @Composable (() -> Unit)? = null,
+    summary: String? = null,
+    staticSummary: String? = null,
+    switchEnabled: Boolean = enabled,
+    onClick: (() -> Unit)? = null,
+) {
+    items.add(
+        GroupItem(
+            title = title,
+            summary = staticSummary ?: summary,
+            icon = icon,
+            content = {
+                ItemActionsSwitch(
+                    value = value,
+                    onValueChange = onValueChange,
+                    title = title,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = enabled,
+                    icon = icon,
+                    summary = summary,
+                    switchEnabled = switchEnabled,
+                    onClick = onClick,
+                )
+            },
+        )
+    )
 }
 
 @Composable
