@@ -78,6 +78,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -166,7 +167,7 @@ internal fun BreadcrumbBar(
             IconButton(onClick = onSearchClick) {
                 Icon(
                     imageVector = Icons.Filled.Search,
-                    contentDescription = "Search",
+                    contentDescription = stringResource(R.string.search),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -415,7 +416,7 @@ internal fun ListPane(
                         IconButton(onClick = onSearchClick) {
                             Icon(
                                 imageVector = Icons.Filled.Search,
-                                contentDescription = "Search",
+                                contentDescription = stringResource(R.string.search),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
@@ -580,7 +581,7 @@ internal fun FullScreenSearch(
                         IconButton(onClick = { onQueryChange("") }) {
                             Icon(
                                 imageVector = Icons.Filled.Close,
-                                contentDescription = "Clear",
+                                contentDescription = stringResource(R.string.clear),
                             )
                         }
                     }
@@ -595,7 +596,7 @@ internal fun FullScreenSearch(
                 if (query.isEmpty()) {
                     item {
                         Text(
-                            text = "Search items",
+                            text = stringResource(R.string.search_items),
                             modifier = Modifier.padding(16.dp),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -617,7 +618,7 @@ internal fun FullScreenSearch(
                     if (entries.isEmpty()) {
                         item {
                             Text(
-                                text = "No matching items",
+                                text = stringResource(R.string.no_matching_items),
                                 modifier = Modifier.padding(16.dp),
                             )
                         }
@@ -745,7 +746,7 @@ internal fun DetailPane(
                         IconButton(onClick = onSearchClick) {
                             Icon(
                                 imageVector = Icons.Filled.Search,
-                                contentDescription = "Search",
+                                contentDescription = stringResource(R.string.search),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
@@ -869,7 +870,7 @@ private fun SearchEntryItem(
 private fun BackChevron() {
     Icon(
         imageVector = Icons.Filled.ChevronRight,
-        contentDescription = "Back",
+        contentDescription = stringResource(R.string.back),
         modifier = Modifier.size(24.dp).rotate(180f),
     )
 }

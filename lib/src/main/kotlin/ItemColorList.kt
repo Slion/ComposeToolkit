@@ -52,6 +52,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 
@@ -84,7 +85,8 @@ public data class ColorOption(
  * @param summary The summary text.
  * @param staticSummary A static summary used in the [buildSearchIndex] index. If null,
  *   [summary] is used.
- * @param dialogCancelLabel Text for the dialog's cancel button.
+ * @param dialogCancelLabel Text for the dialog's cancel button; if null, the library's
+ *   default cancel label is used.
  * @param defaultOptionColor The color to show for the "default" option (a [ColorOption]
  *   with a null [ColorOption.hex]) in both the row swatch and the dialog. When the
  *   default option is selected the app's own theme may be re-derived (e.g. from the
@@ -113,7 +115,7 @@ public fun LazyListScope.itemColorList(
     icon: @Composable (() -> Unit)? = null,
     summary: String? = null,
     staticSummary: String? = null,
-    dialogCancelLabel: String = "Cancel",
+    dialogCancelLabel: String? = null,
     defaultOptionColor: Color? = null,
     style: CardStyle? = null,
     cardColor: Color? = null,
@@ -166,7 +168,7 @@ public fun GroupScope.itemColorList(
     icon: @Composable (() -> Unit)? = null,
     summary: String? = null,
     staticSummary: String? = null,
-    dialogCancelLabel: String = "Cancel",
+    dialogCancelLabel: String? = null,
     defaultOptionColor: Color? = null,
 ) {
     items.add(
@@ -204,7 +206,8 @@ public fun GroupScope.itemColorList(
  * @param enabled Whether the row is enabled.
  * @param icon Optional leading icon.
  * @param summary Optional summary shown below the title.
- * @param dialogCancelLabel Text for the dialog's cancel button.
+ * @param dialogCancelLabel Text for the dialog's cancel button; if null, the library's
+ *   default cancel label is used.
  * @param defaultOptionColor See [itemColorList]'s parameter of the same name.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -218,7 +221,7 @@ public fun ItemColorList(
     enabled: Boolean = true,
     icon: @Composable (() -> Unit)? = null,
     summary: String? = null,
-    dialogCancelLabel: String = "Cancel",
+    dialogCancelLabel: String? = null,
     defaultOptionColor: Color? = null,
 ) {
     var openSelector by rememberSaveable { mutableStateOf(false) }
@@ -301,7 +304,7 @@ public fun ItemColorList(
                                 .align(Alignment.End)
                                 .padding(end = 16.dp, bottom = 16.dp),
                     ) {
-                        Text(text = dialogCancelLabel)
+                        Text(text = dialogCancelLabel ?: stringResource(R.string.cancel))
                     }
                 }
             }

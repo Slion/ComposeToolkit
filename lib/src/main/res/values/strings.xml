@@ -17,6 +17,12 @@
   -->
 
 <resources>
+    <string name="back">Back</string>
     <string name="cancel">Cancel</string>
+    <string name="clear">Clear</string>
+    <string name="no_matching_items">No matching items</string>
     <string name="ok">OK</string>
+    <string name="search">Search</string>
+    <string name="search_items">Search items</string>
+    <string name="search_placeholder">Search %1$s</string>
 </resources>
