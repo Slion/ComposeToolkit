@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -331,6 +332,40 @@ internal object GroupKeys {
 
     internal fun reset() {
         position = 0
+    }
+}
+
+/**
+ * A [LazyListScope] that counts item registrations while delegating to [target]: a builder
+ * registered through it can read [position] to know where its item sits in the page's list
+ * (e.g. a [Section] that is the page's first item drops its top clearance).
+ *
+ * The panes wrap a page's content build in one of these; a build that is not wrapped (e.g.
+ * the search index walk) simply has no counting, and the readers treat the item as not
+ * first.
+ */
+internal class CountingListScope(private val target: LazyListScope) : LazyListScope by target {
+    /** The number of list items (of any kind) registered so far in the current build. */
+    internal var position: Int = 0
+        private set
+
+    override fun item(
+        key: Any?,
+        contentType: Any?,
+        content: @Composable LazyItemScope.() -> Unit,
+    ) {
+        position++
+        target.item(key, contentType, content)
+    }
+
+    override fun items(
+        count: Int,
+        key: ((index: Int) -> Any)?,
+        contentType: (index: Int) -> Any?,
+        itemContent: @Composable LazyItemScope.(index: Int) -> Unit,
+    ) {
+        position += count
+        target.items(count, key, contentType, itemContent)
     }
 }
 

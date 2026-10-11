@@ -468,8 +468,10 @@ private fun ListContent(
             ),
     ) {
         // The level's items: its sub-page items and its regular items, in content order.
+        // Built through a [CountingListScope] so a builder can know its item's position in
+        // the list (a first section drops its top clearance).
         GroupKeys.reset()
-        parentPage.content(this)
+        parentPage.content(CountingListScope(this))
     }
 }
 
@@ -796,8 +798,10 @@ private fun DetailListContent(
                 bottom = edge,
             ),
     ) {
+        // Built through a [CountingListScope] so a builder can know its item's position in
+        // the list (a first section drops its top clearance).
         GroupKeys.reset()
-        page.content(this)
+        page.content(CountingListScope(this))
     }
 }
 
