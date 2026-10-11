@@ -224,14 +224,6 @@ internal fun rememberSampleThemeValues(
 internal fun sampleDefaultScheme(dark: Boolean): ColorScheme =
     if (dark) darkColorScheme() else lightColorScheme()
 
-/** Parses `#RRGGBB` / `#AARRGGBB` hex to a [Color], or [fallback] if malformed. */
-internal fun parseHexColor(hex: String, fallback: Color = Color.Unspecified): Color =
-    runCatching {
-        var h = hex.trim().removePrefix("#")
-        if (h.length == 6) h = "FF$h"
-        if (h.length == 8) Color(h.toLong(16).toInt()) else fallback
-    }.getOrDefault(fallback)
-
 /**
  * The sample's color scheme: dynamic colors when [dynamicColor] is on and no [accent] is set
  * (the wallpaper colors on Android 12+); a fixed [accent] (a hex color string) seeds the full

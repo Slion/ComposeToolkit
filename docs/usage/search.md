@@ -84,6 +84,12 @@ Every item registered in a page's `content` is searchable, as are the root page'
 items. When a page's items change at runtime without a new `Page`, bump that page's
 `contentVersion` so the index is rebuilt.
 
+An item's **icon** in a search result comes from the `icon` parameter of its `LazyListScope`
+builder. The specific builders (`itemSwitch`, `itemList`, …) record it automatically; but
+when a generic `item(…)` draws custom content whose row carries its own icon
+(`item(title = …) { MyRow(icon = …) }`), the index walk never sees the row's icon — pass
+the icon to the builder too, or the result falls back to the page's icon.
+
 ## Searching without the UI
 
 The tree and search helpers are public in [`Page.kt`](../../lib/src/main/kotlin/Page.kt)

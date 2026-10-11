@@ -1,11 +1,11 @@
 /*
- * Copyright 2023 Google LLC
+ * Copyright 2026 Stéphane Lenclud
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     https://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,10 +14,8 @@
  * limitations under the License.
  */
 
-package net.slions.compose.toolkit.demo
+package net.slions.compose.toolkit
 
-import net.slions.compose.toolkit.Item
-import net.slions.compose.toolkit.ItemSlider
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,6 +27,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -43,9 +42,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -55,99 +52,109 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 
 /**
- * A host-controlled slider preference that shows the current value as a right-aligned
- * **title postfix** (e.g. "Tint        30%") and optionally commits while dragging
- * ([live] = true), so the effect applies in real time.
+ * A selectable color option for [ItemColorList], in display order.
  *
- * The drag position is its own stable state (not keyed on [value]); keying it on [value]
- * would re-init it on every commit, which — with a live slider — makes the thumb fight
- * the finger and the effect never settles.
- *
- * @param title The title of the row (e.g. `"Tint"`).
- * @param value The committed value.
- * @param onValueChange Called with the new value on release (or while dragging if [live]).
- * @param valueRange The range of values the slider can take.
- * @param valueSteps The number of discrete intermediate stops; 0 for continuous.
- * @param valueText Formats the value for display (e.g. `{ "${it.toInt()}%" }`).
- * @param live Whether to commit while dragging (true) or only on release (false).
- * @param icon Optional leading icon.
- * @param modifier Modifier applied to the row (e.g. a `testTag`).
+ * @property name The option's label (e.g. "Blue").
+ * @property hex The option's color as a hex string ("#RRGGBB" or "#AARRGGBB"); `null`
+ *   for the "default" option, whose swatch is drawn with [ItemColorList]'s
+ *   `defaultOptionColor` (falling back to the theme's primary). The first entry is
+ *   typically the default.
  */
-@Composable
-public fun LiveItemSlider(
+public data class ColorOption(
+    val name: String,
+    val hex: String? = null,
+)
+
+/**
+ * Adds a color-picker preference item to the lazy list: a row with a swatch of the
+ * selected color right-aligned, which opens an alert dialog of radio-button swatch rows.
+ *
+ * @param key The lazy list key of the item.
+ * @param value The index of the selected option in [options].
+ * @param onValueChange Called with the index of the selected option.
+ * @param options The selectable colors, in display order.
+ * @param title The title of the item. Also used as the item's search text.
+ * @param modifier Modifier applied to the item.
+ * @param enabled Whether the item is enabled.
+ * @param icon The leading icon.
+ * @param summary The summary text.
+ * @param staticSummary A static summary used in the [buildSearchIndex] index. If null,
+ *   [summary] is used.
+ * @param dialogCancelLabel Text for the dialog's cancel button.
+ * @param defaultOptionColor The color to show for the "default" option (a [ColorOption]
+ *   with a null [ColorOption.hex]) in both the row swatch and the dialog. When the
+ *   default option is selected the app's own theme may be re-derived (e.g. from the
+ *   wallpaper), so the *current* theme's primary is not a reliable stand-in for "what the
+ *   system will use": pass the platform's actual default accent when it differs. When
+ *   null, the current theme's primary is used.
+ */
+public fun LazyListScope.itemColorList(
+    key: String,
+    value: Int,
+    onValueChange: (Int) -> Unit,
+    options: List<ColorOption>,
     title: String,
-    value: Float,
-    onValueChange: (Float) -> Unit,
-    valueRange: ClosedFloatingPointRange<Float>,
-    valueSteps: Int,
-    valueText: (Float) -> String,
-    live: Boolean = true,
+    modifier: Modifier = Modifier.fillMaxWidth(),
+    enabled: Boolean = true,
     icon: @Composable (() -> Unit)? = null,
-    modifier: Modifier = Modifier,
+    summary: String? = null,
+    staticSummary: String? = null,
+    dialogCancelLabel: String = "Cancel",
+    defaultOptionColor: Color? = null,
 ) {
-    var sliderValue by remember { mutableFloatStateOf(value) }
-    ItemSlider(
-        value = value,
-        onValueChange = onValueChange,
-        sliderValue = sliderValue,
-        onSliderValueChange = {
-            sliderValue = it
-            if (live) onValueChange(it)
-        },
-        title = title,
-        titlePostfix = { Text(valueText(sliderValue)) },
-        valueRange = valueRange,
-        valueSteps = valueSteps,
-        icon = icon,
-        modifier = modifier,
-    )
+    SearchIndexer.record(key, title, staticSummary ?: summary, icon)
+    item(key = key, contentType = "ItemColorList") {
+        ItemColorList(
+            value = value,
+            onValueChange = onValueChange,
+            options = options,
+            title = title,
+            modifier = modifier.then(highlightedKeyModifier(key)),
+            enabled = enabled,
+            icon = icon,
+            summary = summary,
+            dialogCancelLabel = dialogCancelLabel,
+            defaultOptionColor = defaultOptionColor,
+        )
+    }
 }
 
 /**
  * A color-picker preference row: shows a swatch right-aligned on the row and opens an
  * alert dialog of radio-button swatch rows when clicked.
  *
- * @param value The selected color as a hex string (`"#RRGGBB"`); empty string = platform
- *   default (dynamic colors).
- * @param onValueChange Called with the selected hex (or `""` for the default).
- * @param options The selectable colors, in display order. The first entry is typically
- *   the "default" (null hex).
+ * @param value The index of the selected option in [options].
+ * @param onValueChange Called with the index of the selected option.
+ * @param options The selectable colors, in display order.
  * @param title The title of the row.
- * @param summary The summary shown below the title.
- * @param icon Optional leading icon.
- * @param dialogCancelLabel Text for the dialog's cancel button.
- * @param defaultOptionColor The color to show for the "default" option (an entry with a null
- *   hex) in both the row swatch and the dialog. When the default option is selected the app's
- *   own theme is re-derived (e.g. from the wallpaper), so the *current* theme's primary is not
- *   a reliable stand-in for "what the system will use". Pass the platform's actual default
- *   accent (e.g. the system dynamic accent on Android) so the swatch is always correct.
- *   When null, falls back to the current theme's primary.
  * @param modifier Modifier applied to the row (e.g. a `testTag`).
+ * @param enabled Whether the row is enabled.
+ * @param icon Optional leading icon.
+ * @param summary Optional summary shown below the title.
+ * @param dialogCancelLabel Text for the dialog's cancel button.
+ * @param defaultOptionColor See [itemColorList]'s parameter of the same name.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-public fun ColorPreference(
-    value: String,
-    onValueChange: (String) -> Unit,
-    options: List<AccentColorOption>,
+public fun ItemColorList(
+    value: Int,
+    onValueChange: (Int) -> Unit,
+    options: List<ColorOption>,
     title: String,
-    summary: String,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
     icon: @Composable (() -> Unit)? = null,
+    summary: String? = null,
     dialogCancelLabel: String = "Cancel",
     defaultOptionColor: Color? = null,
-    modifier: Modifier = Modifier,
 ) {
     var openSelector by rememberSaveable { mutableStateOf(false) }
-    // The color to show for the "default" option. When the caller provides the platform's
-    // real default accent, use it (stable regardless of which option is currently selected);
-    // otherwise fall back to the current theme's primary, which is only correct while the
-    // default option is already active.
+    // The color to show for the "default" option (a null [ColorOption.hex]): the caller's
+    // platform default when given, otherwise the current theme's primary.
     val defaultSwatch = defaultOptionColor ?: MaterialTheme.colorScheme.primary
-    val swatchColor = if (value.isEmpty()) {
-        defaultSwatch
-    } else {
-        parseHexColor(value)
-    }
+    // The row swatch: the selected option's color, or the default's.
+    val swatchColor =
+        options.getOrNull(value)?.hex?.let { parseHexColor(it) } ?: defaultSwatch
 
     if (openSelector) {
         BasicAlertDialog(onDismissRequest = { openSelector = false }) {
@@ -162,20 +169,18 @@ public fun ColorPreference(
                         text = title,
                         style = MaterialTheme.typography.headlineSmall,
                         color = AlertDialogDefaults.titleContentColor,
-                        modifier = Modifier
-                            .padding(start = 24.dp, top = 24.dp, end = 24.dp, bottom = 8.dp),
+                        modifier =
+                            Modifier
+                                .padding(start = 24.dp, top = 24.dp, end = 24.dp, bottom = 8.dp),
                     )
                     LazyColumn(
                         modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp),
                     ) {
-                        items(options) { accent ->
-                            val accentHex = accent.hex ?: ""
-                            val selected = accentHex == value
-                            val accentColor = if (accentHex.isEmpty()) {
-                                defaultSwatch
-                            } else {
-                                parseHexColor(accentHex)
-                            }
+                        items(options.size) { i ->
+                            val option = options[i]
+                            val selected = i == value
+                            val optionColor =
+                                option.hex?.let { parseHexColor(it) } ?: defaultSwatch
                             Row(
                                 modifier =
                                     Modifier
@@ -185,7 +190,7 @@ public fun ColorPreference(
                                             true,
                                             Role.RadioButton,
                                             onClick = {
-                                                onValueChange(accentHex)
+                                                onValueChange(i)
                                                 openSelector = false
                                             },
                                         )
@@ -197,12 +202,12 @@ public fun ColorPreference(
                                     onClick = null,
                                     colors =
                                         RadioButtonDefaults.colors(
-                                            selectedColor = accentColor,
+                                            selectedColor = optionColor,
                                         ),
                                 )
                                 Spacer(modifier = Modifier.width(24.dp))
                                 Text(
-                                    text = accent.name,
+                                    text = option.name,
                                     color = MaterialTheme.colorScheme.onSurface,
                                     style = MaterialTheme.typography.bodyLarge,
                                 )
@@ -211,7 +216,7 @@ public fun ColorPreference(
                                     modifier =
                                         Modifier
                                             .size(24.dp)
-                                            .background(accentColor, shape = RoundedCornerShape(8.dp)),
+                                            .background(optionColor, shape = RoundedCornerShape(8.dp)),
                                 )
                             }
                         }
@@ -223,7 +228,7 @@ public fun ColorPreference(
                                 .align(Alignment.End)
                                 .padding(end = 16.dp, bottom = 16.dp),
                     ) {
-                        Text(dialogCancelLabel)
+                        Text(text = dialogCancelLabel)
                     }
                 }
             }
@@ -234,6 +239,7 @@ public fun ColorPreference(
         title = title,
         summary = summary,
         icon = icon,
+        enabled = enabled,
         widgetContainer = {
             Box(
                 modifier =
@@ -249,13 +255,11 @@ public fun ColorPreference(
 }
 
 /**
- * A selectable accent-color option for [ColorPreference].
- *
- * @param name The display name (e.g. `"Purple"`).
- * @param hex The hex color string (`"#RRGGBB"`); `null` means the platform default
- *   (dynamic colors).
+ * Parses a `#RRGGBB` / `#AARRGGBB` hex color, or [fallback] when the string is malformed.
  */
-public data class AccentColorOption(
-    val name: String,
-    val hex: String?,
-)
+internal fun parseHexColor(hex: String, fallback: Color = Color.Unspecified): Color =
+    runCatching {
+        var h = hex.trim().removePrefix("#")
+        if (h.length == 6) h = "FF$h"
+        if (h.length == 8) Color(h.toLong(16).toInt()) else Color.Unspecified
+    }.getOrDefault(fallback)

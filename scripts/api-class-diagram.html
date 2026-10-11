@@ -256,13 +256,10 @@ class ItemActionsSwitch {
 class Section {
   <<composable - section header>>
 }
-class LiveItemSlider {
-  <<composable - sample>>
+class ItemColorList {
+  <<composable>>
 }
-class ColorItem {
-  <<composable - sample>>
-}
-class AccentColorOption {
+class ColorOption {
   <<data>>
 }
 
@@ -365,9 +362,8 @@ GroupItem --> Page : page (optional)
 GroupItem ..> Item : rendered as
 Item ..> CardStyle : style (item style param)
 Page ..> Group : via a group item with a Page
-LiveItemSlider --|> Item : is a
-ColorItem --|> Item : is a
-ColorItem ..> AccentColorOption : options
+ItemColorList --|> Item : is a
+ItemColorList ..> ColorOption : options
 
 </script>
 <script>

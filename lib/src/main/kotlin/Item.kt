@@ -68,7 +68,10 @@ import androidx.compose.ui.unit.dp
  *   [page]'s title is used.
  * @param modifier Modifier applied to the item.
  * @param enabled Whether the item is enabled.
- * @param icon The leading icon. If null, [page]'s icon is used.
+ * @param icon The leading icon. If null, [page]'s icon is used. It is also the item's icon
+ *   in the [buildSearchIndex] index: when the item draws custom content whose row carries
+ *   its own icon (e.g. `item(title = …) { MyRow(icon = …) }`), pass it here too, or the
+ *   search result falls back to the page's icon.
  * @param actionIcon The action icon, shown just before the widget. For a page item, a
  *   chevron if null.
  * @param summary The summary text, shown below the title. If null, [page]'s summary is

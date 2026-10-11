@@ -15,20 +15,19 @@
 
 package net.slions.compose.toolkit.demo
 
-import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.ui.graphics.Color
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Contrast
 import androidx.compose.material.icons.outlined.TextFields
 import androidx.compose.material3.Icon
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import dev.vicart.compose.material.symbols.MaterialSymbol
-import net.slions.compose.toolkit.ItemList
+import net.slions.compose.toolkit.ColorOption
 import net.slions.compose.toolkit.Page
 import net.slions.compose.toolkit.group
+import net.slions.compose.toolkit.itemColorList
+import net.slions.compose.toolkit.itemList
+import net.slions.compose.toolkit.itemSlider
 import net.slions.compose.toolkit.section
 
 /**
@@ -51,119 +50,116 @@ fun themePage(
     ) {
         section(key = "theme_colors_category", title = "Colors")
         group(key = "theme_colors_group") {
-            item(title = "Contrast", summary = values.themeMode.label) {
-                ItemList(
-                    value = values.themeMode,
-                    onValueChange = { onValuesChange(values.copy(themeMode = it)) },
-                    values = SampleThemeMode.entries,
-                    title = "Contrast",
-                    summary = values.themeMode.label,
-                    icon = { Icon(imageVector = Icons.Outlined.Contrast, contentDescription = null) },
-                    valueToText = { AnnotatedString(it.label) },
-                )
-            }
-            item(title = "Color", summary = accentNameOf(values.accent)) {
-                ColorPreference(
-                    value = values.accent ?: "",
-                    onValueChange = { onValuesChange(values.copy(accent = it.ifEmpty { null })) },
-                    options = SampleThemeValues.ACCENT_PRESETS.map { AccentColorOption(it.name, it.hex) },
-                    title = "Color",
-                    summary = accentNameOf(values.accent),
-                    icon = { MaterialSymbol.Outlined(icon = "colors") },
-                    defaultOptionColor = defaultAccent,
-                )
-            }
-            item(title = "Tint") {
-                LiveItemSlider(
-                    title = "Tint",
-                    value = (values.tintFactorPercent ?: DEFAULT_TINT_FACTOR_PERCENT).toFloat(),
-                    onValueChange = { onValuesChange(values.copy(tintFactorPercent = it.toInt())) },
-                    valueRange = TINT_FACTOR_RANGE.first.toFloat()..TINT_FACTOR_RANGE.last.toFloat(),
-                    // M3 'steps' counts intermediate stops (segments = steps + 1), so for 5% steps
-                    // over 0..50 (10 segments) we pass 9, not 10.
-                    valueSteps = (TINT_FACTOR_RANGE.last - TINT_FACTOR_RANGE.first) / 5 - 1,
-                    valueText = { "${it.toInt()}%" },
-                    live = true,
-                    icon = { MaterialSymbol.Outlined(icon = "imagesearch_roller") },
-                )
-            }
+            // Each row is a single builder call: the title, summary and icon are specified
+            // once, and the builder records them in the search index.
+            itemList(
+                key = "theme_mode",
+                value = values.themeMode,
+                onValueChange = { onValuesChange(values.copy(themeMode = it)) },
+                values = SampleThemeMode.entries,
+                title = "Contrast",
+                summary = values.themeMode.label,
+                icon = { Icon(imageVector = Icons.Outlined.Contrast, contentDescription = null) },
+                valueToText = { AnnotatedString(it.label) },
+            )
+            val accentIndex =
+                SampleThemeValues.ACCENT_PRESETS.indexOfFirst { (it.hex ?: "") == (values.accent ?: "") }
+                    .coerceAtLeast(0)
+            itemColorList(
+                key = "theme_accent",
+                value = accentIndex,
+                onValueChange = { onValuesChange(values.copy(accent = SampleThemeValues.ACCENT_PRESETS[it].hex)) },
+                options = SampleThemeValues.ACCENT_PRESETS.map { ColorOption(it.name, it.hex) },
+                title = "Color",
+                summary = accentNameOf(values.accent),
+                icon = { MaterialSymbol.Outlined(icon = "colors") },
+                defaultOptionColor = defaultAccent,
+            )
+            itemSlider(
+                key = "theme_tint",
+                value = (values.tintFactorPercent ?: DEFAULT_TINT_FACTOR_PERCENT).toFloat(),
+                onValueChange = { onValuesChange(values.copy(tintFactorPercent = it.toInt())) },
+                title = "Tint",
+                icon = { MaterialSymbol.Outlined(icon = "imagesearch_roller") },
+                valueRange = TINT_FACTOR_RANGE.first.toFloat()..TINT_FACTOR_RANGE.last.toFloat(),
+                // M3 'steps' counts intermediate stops (segments = steps + 1), so for 5% steps
+                // over 0..50 (10 segments) we pass 9, not 10.
+                valueSteps = (TINT_FACTOR_RANGE.last - TINT_FACTOR_RANGE.first) / 5 - 1,
+                valueText = { "${it.toInt()}%" },
+                live = true,
+            )
         }
 
         section(key = "theme_text_category", title = "Texts")
         group(key = "theme_text_group") {
-            item(title = "Font", summary = fontLabel(values.fontFamily)) {
-                ItemList(
-                    value = values.fontFamily ?: SampleThemeValues.DEFAULT_FONT,
-                    onValueChange = { onValuesChange(values.copy(fontFamily = it)) },
-                    values = SampleThemeValues.FONT_FAMILIES,
-                    title = "Font",
-                    summary = fontLabel(values.fontFamily),
-                    icon = { Icon(imageVector = Icons.Outlined.TextFields, contentDescription = null) },
-                    valueToText = { AnnotatedString(fontLabel(it)) },
-                )
-            }
-            item(title = "Size") {
-                LiveItemSlider(
-                    title = "Size",
-                    value = (values.fontSizePercent ?: 100).toFloat(),
-                    onValueChange = { onValuesChange(values.copy(fontSizePercent = it.toInt())) },
-                    valueRange = 80f..140f,
-                    // 5% steps over 80..140 = 12 segments, so 11 intermediate stops.
-                    valueSteps = (140 - 80) / 5 - 1,
-                    valueText = { "${it.toInt()}%" },
-                    live = true,
-                    icon = { MaterialSymbol.Outlined(icon = "format_size") },
-                )
-            }
+            itemList(
+                key = "theme_font",
+                value = values.fontFamily ?: SampleThemeValues.DEFAULT_FONT,
+                onValueChange = { onValuesChange(values.copy(fontFamily = it)) },
+                values = SampleThemeValues.FONT_FAMILIES,
+                title = "Font",
+                summary = fontLabel(values.fontFamily),
+                icon = { Icon(imageVector = Icons.Outlined.TextFields, contentDescription = null) },
+                valueToText = { AnnotatedString(fontLabel(it)) },
+            )
+            itemSlider(
+                key = "theme_size",
+                value = (values.fontSizePercent ?: 100).toFloat(),
+                onValueChange = { onValuesChange(values.copy(fontSizePercent = it.toInt())) },
+                title = "Size",
+                icon = { MaterialSymbol.Outlined(icon = "format_size") },
+                valueRange = 80f..140f,
+                // 5% steps over 80..140 = 12 segments, so 11 intermediate stops.
+                valueSteps = (140 - 80) / 5 - 1,
+                valueText = { "${it.toInt()}%" },
+                live = true,
+            )
         }
 
         section(key = "theme_shapes_category", title = "Shapes")
         group(key = "theme_shapes_group") {
-            item(title = "Corner") {
-                LiveItemSlider(
-                    title = "Corner",
-                    value = (values.cornerRadiusDp ?: DEFAULT_CORNER_RADIUS_DP).toFloat(),
-                    onValueChange = { onValuesChange(values.copy(cornerRadiusDp = it.toInt())) },
-                    valueRange = 0f..32f,
-                    // 2 dp steps over 0..32 = 16 segments, so 15 intermediate stops.
-                    valueSteps = (32 - 0) / 2 - 1,
-                    valueText = { "${it.toInt()} dp" },
-                    live = true,
-                    icon = { MaterialSymbol.Outlined(icon = "rounded_corner") },
-                )
-            }
+            itemSlider(
+                key = "theme_corner",
+                value = (values.cornerRadiusDp ?: DEFAULT_CORNER_RADIUS_DP).toFloat(),
+                onValueChange = { onValuesChange(values.copy(cornerRadiusDp = it.toInt())) },
+                title = "Corner",
+                icon = { MaterialSymbol.Outlined(icon = "rounded_corner") },
+                valueRange = 0f..32f,
+                // 2 dp steps over 0..32 = 16 segments, so 15 intermediate stops.
+                valueSteps = (32 - 0) / 2 - 1,
+                valueText = { "${it.toInt()} dp" },
+                live = true,
+            )
         }
 
         section(key = "theme_spacing_category", title = "Spacing")
         group(key = "theme_spacing_group") {
-            item(title = "Pane gap") {
-                LiveItemSlider(
-                    title = "Pane gap",
-                    value = (values.paneGapDp ?: DEFAULT_PANE_GAP_DP).toFloat(),
-                    onValueChange = { onValuesChange(values.copy(paneGapDp = it.toInt())) },
-                    valueRange = 0f..48f,
-                    // 4 dp steps over 0..48 = 12 segments, so 11 intermediate stops.
-                    valueSteps = (48 - 0) / 4 - 1,
-                    valueText = { "${it.toInt()} dp" },
-                    live = true,
-                    icon = { MaterialSymbol.Outlined(icon = "splitscreen") },
-                )
-            }
+            itemSlider(
+                key = "theme_pane_gap",
+                value = (values.paneGapDp ?: DEFAULT_PANE_GAP_DP).toFloat(),
+                onValueChange = { onValuesChange(values.copy(paneGapDp = it.toInt())) },
+                title = "Pane gap",
+                icon = { MaterialSymbol.Outlined(icon = "splitscreen") },
+                valueRange = 0f..48f,
+                // 4 dp steps over 0..48 = 12 segments, so 11 intermediate stops.
+                valueSteps = (48 - 0) / 4 - 1,
+                valueText = { "${it.toInt()} dp" },
+                live = true,
+            )
         }
 
         section(key = "theme_motion_category", title = "Motion")
         group(key = "theme_motion_group") {
-            item(title = "Transition", summary = values.pageTransition ?: DEFAULT_PAGE_TRANSITION) {
-                ItemList(
-                    value = values.pageTransition ?: DEFAULT_PAGE_TRANSITION,
-                    onValueChange = { onValuesChange(values.copy(pageTransition = it)) },
-                    values = PAGE_TRANSITION_OPTIONS,
-                    title = "Transition",
-                    summary = values.pageTransition ?: DEFAULT_PAGE_TRANSITION,
-                    icon = { MaterialSymbol.Outlined(icon = "animation") },
-                    valueToText = { AnnotatedString(it) },
-                )
-            }
+            itemList(
+                key = "theme_transition",
+                value = values.pageTransition ?: DEFAULT_PAGE_TRANSITION,
+                onValueChange = { onValuesChange(values.copy(pageTransition = it)) },
+                values = PAGE_TRANSITION_OPTIONS,
+                title = "Transition",
+                summary = values.pageTransition ?: DEFAULT_PAGE_TRANSITION,
+                icon = { MaterialSymbol.Outlined(icon = "animation") },
+                valueToText = { AnnotatedString(it) },
+            )
         }
     }
 }

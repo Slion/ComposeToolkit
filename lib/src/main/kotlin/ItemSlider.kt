@@ -144,6 +144,74 @@ public fun LazyListScope.itemSlider(
 }
 
 /**
+ * Adds a slider preference item to the lazy list, whose value is controlled by the caller.
+ * Unlike the overload that takes a [sliderValue], the thumb position is the item's own
+ * stable state (not keyed on [value]): keying it on [value] would re-init it on every
+ * commit, which — with [live] committing while dragging — makes the thumb fight the finger
+ * and the effect never settles.
+ *
+ * [valueText] (when non-null) is shown as a live **title postfix** (the formatted thumb
+ * value, e.g. "Tint        30%"), not next to the slider.
+ *
+ * @param key The lazy list key of the item.
+ * @param value The committed value.
+ * @param onValueChange Called with a new value: on release always, and while dragging when
+ *   [live] is on.
+ * @param title The title of the item. Also used as the item's search text.
+ * @param modifier Modifier applied to the item.
+ * @param valueRange The range of values the slider can take.
+ * @param valueSteps The number of discrete intermediate stops; 0 for continuous.
+ * @param enabled Whether the item is enabled.
+ * @param icon The leading icon.
+ * @param summary The summary text.
+ * @param staticSummary A static summary used in the [buildSearchIndex] index. If null,
+ *   [summary] is used.
+ * @param valueText Formats the live thumb value for the title postfix.
+ * @param live Whether to commit while dragging (true) or only on release (false).
+ */
+public fun LazyListScope.itemSlider(
+    key: String,
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    title: String,
+    modifier: Modifier = Modifier.fillMaxWidth(),
+    valueRange: ClosedFloatingPointRange<Float> = 0f..1f,
+    valueSteps: Int = 0,
+    enabled: Boolean = true,
+    icon: @Composable (() -> Unit)? = null,
+    summary: String? = null,
+    staticSummary: String? = null,
+    valueText: ((Float) -> String?)? = null,
+    live: Boolean = false,
+) {
+    SearchIndexer.record(key, title, staticSummary ?: summary, icon)
+    item(key = key, contentType = "ItemSlider") {
+        // The thumb position, its own stable state; see the KDoc.
+        val thumb = remember { mutableFloatStateOf(value) }
+        ItemSlider(
+            value = value,
+            onValueChange = onValueChange,
+            sliderValue = thumb.floatValue,
+            onSliderValueChange = {
+                thumb.floatValue = it
+                if (live) onValueChange(it)
+            },
+            title = title,
+            modifier = modifier.then(highlightedKeyModifier(key)),
+            valueRange = valueRange,
+            valueSteps = valueSteps,
+            enabled = enabled,
+            icon = icon,
+            summary = summary,
+            titlePostfix =
+                valueText?.let { text ->
+                    @Composable { text(thumb.floatValue)?.let { Text(it) } }
+                },
+        )
+    }
+}
+
+/**
  * A slider preference item, whose state is a [MutableState].
  */
 @Composable
