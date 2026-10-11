@@ -80,10 +80,10 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.first
 
 /**
- * The breadcrumb that spans both panes in two-pane mode: the screen title, a back chevron
- * (when nested in a sub-page, so the user can pop one level up without hunting the trail),
- * and the current page's trail. Tapping an ancestor segment pops the trail back to it;
- * the last (current) segment is plain text.
+ * The breadcrumb that spans both panes in two-pane mode: the screen title, a back chevron,
+ * and the current page's trail. The chevron behaves exactly like the system back ([onBack]:
+ * one level up when nested two or deeper, [onBack] otherwise). Tapping an ancestor segment
+ * pops the trail back to it; the last (current) segment is plain text.
  */
 @Composable
 internal fun BreadcrumbBar(
@@ -109,11 +109,11 @@ internal fun BreadcrumbBar(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (nested || showBackButton) {
-                IconButton(
-                    onClick = {
-                        if (nested) onNavigateToPath(pagePath.dropLast(1)) else onBack()
-                    },
-                ) {
+                // Same behavior as the system back: the host's back action pops one level
+                // up when nested two or deeper and leaves the screen otherwise. The chevron
+                // must not pop a level-1 page to the root on its own: in two-pane the list
+                // pane already shows the root's items, so a level-1 back exits the screen.
+                IconButton(onClick = onBack) {
                     BackChevron()
                 }
             }

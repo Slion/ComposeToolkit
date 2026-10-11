@@ -142,18 +142,20 @@ public class CatalogOptions(
  *   by an action is a two-target item: the content runs the action, the trailing chevron
  *   opens the page.
  * @param modifier Modifier applied to the root surface.
- * @param onBack Called when the host should dismiss the screen (i.e. system back while
- * the list pane is on screen in a single-pane layout, or a tap of the title-bar back
- * button when [showBackButton] is on and the tree is at its root).
+ * @param onBack Called when the host should dismiss the screen: system back (or a tap
+ * of the title-bar back button when [showBackButton] is on) at the root of the tree,
+ * and — in a two-pane layout, where the list pane already shows the root's items —
+ * also from a first-level page.
  * @param backEnabled Whether the screen's system-back handling is active. A host that
  * covers the screen with its own layer (e.g. a fragment or view shown over it) passes
  * false so that back goes to that layer — and its back stack — first.
  * @param showBackButton Whether to show a back chevron next to the screen title (the
- * single-pane title bar and, in two-pane, the breadcrumb). Nested in the tree it pops
- * one level up, as the existing chevron does; at the root it calls [onBack]. A host
- * that is not the app's root surface (e.g. an activity opened from another screen)
- * sets this — with [onBack] closing the host — so the user can return without hunting
- * the system back.
+ * single-pane title bar and, in two-pane, the breadcrumb). It behaves exactly like the
+ * system back: in single-pane it pops the open page (back to the root list, or one
+ * level up when nested deeper); in two-pane it pops one level up when nested two or
+ * deeper, and calls [onBack] otherwise. A host that is not the app's root surface
+ * (e.g. an activity opened from another screen) sets this — with [onBack] closing the
+ * host — so the user can return without hunting the system back.
  * @param adaptiveInfo Adaptive layout info computed for the host of the screen instead
  * of for the window. The screen's adaptive layout (single- vs two-pane) follows this
  * value, which is what a host smaller than the window — e.g. a modal bottom sheet, a
