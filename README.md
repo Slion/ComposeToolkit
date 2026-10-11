@@ -144,7 +144,7 @@ If AndroidX DataStore is considered more appropriate for your use case, e.g. you
 
 ## Settings screen
 
-[`Catalog`](lib/src/main/kotlin/Catalog.kt) hosts a whole settings tree in a single adaptive screen: a list pane of pages with a search field, and a detail pane showing the selected page's items.
+[`Catalog`](lib/src/main/kotlin/Catalog.kt) hosts a whole settings tree in a single adaptive screen: a list pane of pages, and a detail pane showing the selected page's items.
 
 ```kotlin
 Catalog(
@@ -156,7 +156,7 @@ Catalog(
 
 - **Single-pane** (narrow window, e.g. a phone in portrait): selecting a page navigates to the detail pane; the top bar shows the page title with a back arrow, and system back pops the detail before dismissing the screen.
 - **Two-pane** (wide window, e.g. a tablet or an unfolded foldable): both panes are visible at once as a 50/50 split.
-- The **list pane** shows an MD3-style search pill. While a query is entered, the page list is replaced by the matching pages and preference entries; selecting a result clears the query, opens the page, and scrolls to (briefly highlights) the matched item.
+- **Search** is a full-screen overlay opened from the search affordance in the title bar (the breadcrumb in two-pane mode; the list header at the root, or the detail pane's compact bar on a sub-page, in single-pane). It is scoped to the page the user is viewing — that page and everything below it (the whole tree at the root level) — and while a query is entered it lists the matching pages and preference entries; selecting a result closes it and locates the item (opening the page, or scrolling the list to, and briefly highlighting, the match). System back and the overlay's back chevron both close it. See [Search](docs/usage/search.md) for the full behavior.
 - Like any page, the **root of the tree** hosts regular items in addition to the page items: declare them in the root `Page`'s `content` and they are drawn below the top-level pages (any `LazyListScope` item builder works, and the items are searchable). Bump a page's `contentVersion` when its items change at runtime so the search index is rebuilt.
 
 The screen follows the [Material 3 adaptive](https://developer.android.com/develop/ui/compose/m3/adaptive) layout, so the same code adapts across postures. It also handles **half-folded** foldables (the two panes stay exactly half each via `HingePolicy.NeverAvoid`) and **medium-width** windows (the detail pane activates there, not only at the 720dp "Expanded" class).
@@ -191,7 +191,7 @@ Page(
 
 In two-pane mode the current trail is shown as a breadcrumb above the panes (tapping an ancestor jumps back to it); in single-pane mode the back arrow pops one level at a time. Page ids must be unique within the whole tree.
 
-The tree and search helpers live in [`Page.kt`](lib/src/main/kotlin/Page.kt): `walkPages()`, `findPage()`, `findPagePath()`, and `searchPages()`. Search covers the entire tree: [`buildSearchIndex(pages)`](lib/src/main/kotlin/SearchIndex.kt) walks every page's content (including all `subPages`) and records a searchable entry for each item, so `Catalog` can filter both pages and items and scroll to a match.
+The tree and search helpers live in [`Page.kt`](lib/src/main/kotlin/Page.kt): `walkPages()`, `findPage()`, `findPagePath()`, and `searchPages()`. The index covers the entire tree — [`buildSearchIndex(root)`](lib/src/main/kotlin/SearchIndex.kt) walks every page's content (including all `subPages`) and records a searchable entry for each item — and `Catalog` filters it to the page the user is viewing (the whole tree at the root level), so it can match both pages and items and scroll to a match. See [Search](docs/usage/search.md).
 
 ### Hosting in a bottom sheet or dialog
 

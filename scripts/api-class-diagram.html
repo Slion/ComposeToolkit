@@ -110,7 +110,7 @@ class ListPane {
 class DetailPane {
   <<composable - internal>>
 }
-class SearchPill {
+class FullScreenSearch {
   <<composable - internal>>
 }
 class BreadcrumbBar {
@@ -317,12 +317,12 @@ Catalog ..> ItemTheme : consumes
 Catalog ..> SearchIndex : builds
 Catalog o-- ListPane : composes
 Catalog o-- DetailPane : composes
-ListPane o-- SearchPill : composes
+Catalog o-- FullScreenSearch : composes (search overlay)
 ListPane ..> BreadcrumbBar : single-pane
 ListPane ..> SearchEntry : search results
 DetailPane ..> SearchEntry : search results
 DetailPane ..> Page : renders content
-SearchPill ..> SearchEntry : submits
+FullScreenSearch ..> SearchEntry : results
 
 Page --> Page : childPages (derived from content)
 Page ..> PageStructure : structure (walk of content)

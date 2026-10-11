@@ -17,7 +17,13 @@
 package net.slions.compose.toolkit
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.systemBarsPadding
@@ -58,12 +64,6 @@ import kotlinx.coroutines.launch
  * transparent before the key is cleared, otherwise the highlight is cut off mid-animation.
  */
 private const val HIGHLIGHT_DURATION_MS = 3600L
-
-/**
- * How long a pane transition keeps the search field out of the focus tree, so the focus
- * system does not restore focus (and show the keyboard) on it mid-transition.
- */
-private const val FIELD_FOCUS_SETTLE_MS = 400L
 
 /** The panes that can hold focus; the last one to do so decides single-pane landing. */
 private enum class ActivePane { List, Detail }
@@ -131,8 +131,8 @@ public class CatalogOptions(
 )
 
 /**
- * The adaptive two-pane settings screen: a list pane of [pages] with a search field, and
- * a detail pane showing the selected page's preferences.
+ * The adaptive two-pane settings screen: a list pane of [pages], and a detail pane
+ * showing the selected page's preferences.
  *
  * - Single-pane (e.g. a phone in portrait): selecting a page navigates to the detail
  *   pane; the top bar shows the page title with a back arrow, and system back pops the
@@ -141,10 +141,14 @@ public class CatalogOptions(
  *   screen title and there is no navigation.
  *
  * The list pane shows the root page's items (its sub-page items and its regular items,
- * in content order); the detail pane shows the selected page's items the same way. The
- * list pane shows an MD3-style search pill; while a query is entered, the items are
- * replaced by the matching pages and preference entries, and selecting a result clears
- * the query and opens the page (or scrolls the list to the entry's item).
+ * in content order); the detail pane shows the selected page's items the same way.
+ * Search is a full-screen overlay opened from the search affordance in the title bar
+ * (the breadcrumb in two-pane mode; the list header at the root, and the detail pane's
+ * compact bar on a subpage, in single-pane). It is scoped to the page the user is
+ * currently viewing — that page and everything below it (the whole tree at the root
+ * level): while a query is entered it lists the matching pages and preference entries
+ * within that scope, and selecting a result closes it and opens the page (or scrolls
+ * the list to the entry's item).
  *
  * @param title Title of the screen, shown in the top bar.
  * @param root The root page: its items are the list pane's top level, and its page items
@@ -209,23 +213,20 @@ public fun Catalog(
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
 
-    // The search field is the first focusable in the list pane, so the focus system
-    // restores focus to it on launch and when the list pane is restored, showing a brief
-    // focus flash and keyboard. Keep it out of the focus tree during those transitions
-    // so focus is never gained in the first place; it becomes focusable once the pane
-    // has settled.
-    var fieldFocusEnabled by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        delay(FIELD_FOCUS_SETTLE_MS)
-        fieldFocusEnabled = true
+    // Whether the full-screen search overlay is showing (opened from the title-bar search
+    // affordance). The query and its results live in the overlay, not in a pane.
+    var searchOpen by remember { mutableStateOf(false) }
+
+    // Opens the full-screen search overlay.
+    fun openSearch() {
+        searchOpen = true
     }
-    // Keep the field out of the focus tree across a pane transition (or the system would
-    // restore focus and show the keyboard), then let it settle back in.
-    suspend fun guardedNavigation(block: suspend () -> Unit) {
-        fieldFocusEnabled = false
-        block()
-        delay(FIELD_FOCUS_SETTLE_MS)
-        fieldFocusEnabled = true
+
+    // Closes the full-screen search overlay and dismisses its field (focus + keyboard).
+    fun closeSearch() {
+        searchOpen = false
+        focusManager.clearFocus(force = true)
+        keyboardController?.hide()
     }
 
     // The pane whose content last had focus (e.g. the user was scrolling/interacting
@@ -299,15 +300,13 @@ public fun Catalog(
             }
         }
     }
-    // Pops the scaffold to the root list, keeping the search field out of the focus tree
-    // for the transition.
-    suspend fun popToRootList() =
-        guardedNavigation {
-            navigator.navigateBack()
-            pageDirection = PageDirection.Backward
-            pagePath = emptyList()
-            userSelectedPage = false
-        }
+    // Pops the scaffold to the root list.
+    suspend fun popToRootList() {
+        navigator.navigateBack()
+        pageDirection = PageDirection.Backward
+        pagePath = emptyList()
+        userSelectedPage = false
+    }
 
     // Keep the pane layout in sync with the window size:
     // - Growing to two-pane with no detail destination opens a page right away (the last
@@ -356,10 +355,7 @@ public fun Catalog(
                     (navigator.scaffoldState as? MutableThreePaneScaffoldState)
                         ?.snapTo(navigator.scaffoldValue)
                 } else {
-                    // Keep the field out of the focus tree while the list pane is
-                    // restored, so the focus system does not put focus (and the
-                    // keyboard) back on it.
-                    guardedNavigation { navigator.navigateBack() }
+                    navigator.navigateBack()
                 }
             }
         }
@@ -401,8 +397,7 @@ public fun Catalog(
         val onDetail = destination?.pane == ListDetailPaneScaffoldRole.Detail
         when {
             // Nested in the tree: pop one level up (child -> parent) first.
-            onDetail && pagePath.size > 1 ->
-                scope.launch { guardedNavigation { navigateToPath(pagePath.dropLast(1)) } }
+            onDetail && pagePath.size > 1 -> navigateToPath(pagePath.dropLast(1))
             !isTwoPane && onDetail -> scope.launch { popToRootList() }
             else -> onBack()
         }
@@ -413,7 +408,19 @@ public fun Catalog(
     // back goes to that layer (and its back stack) first.
     BackHandler(enabled = backEnabled, onBack = ::backAction)
 
-    val isSearching = query.isNotEmpty()
+    // System back closes the search overlay first (it sits on top of the panes), then
+    // falls through to the screen's own back handling.
+    BackHandler(enabled = searchOpen, onBack = ::closeSearch)
+
+    // The page the detail pane shows (null at the root level, where the list itself is
+    // shown).
+    val currentPage = selectedPageId?.let { id -> findPage(root, id) }
+    // The search is scoped to the page the user is currently viewing — its subtree,
+    // "the current level and below": the open page when one is open, the root level
+    // otherwise. Each result's trail is still computed from the screen root (see
+    // buildSearchEntries), so selecting a result navigates through the full tree.
+    val searchScopePage = currentPage ?: root
+
     // The structure (search entries + sub-page refs) is rebuilt when the tree changes or
     // when a page bumps its content version (items added or changed at runtime).
     val structures =
@@ -422,11 +429,12 @@ public fun Catalog(
         }
     val index = remember(structures) { structures.mapValues { it.value.entries } }
     val matches =
-        remember(root, index, query) { searchPages(root, index, query) }
+        remember(searchScopePage.id, index, query) {
+            searchPages(searchScopePage, index, query)
+        }
     val searchEntries =
         remember(matches, query, title) { buildSearchEntries(root, matches, query, title) }
 
-    val currentPage = selectedPageId?.let { id -> findPage(root, id) }
     // The trail of the page the detail shows, from below the root (the pages of
     // [pagePath] resolved to instances for their titles). Derived from the stored trail
     // rather than re-walked, so a page hosted from several places keeps the trail it
@@ -476,7 +484,7 @@ public fun Catalog(
             }
         }
         highlightedKey = key
-        listScrollToIndex = 1 + index
+        listScrollToIndex = index
     }
 
     // An entry of a page the list pane should show: make sure it shows that page's
@@ -501,6 +509,7 @@ public fun Catalog(
     // A search result item was tapped.
     fun onSearchEntrySelected(entry: SearchEntry) {
         query = ""
+        searchOpen = false
         // Clear the search field's focus and hide the keyboard up front: on Android the
         // IME is tied to the window, not to Compose focus, so moving focus alone does not
         // dismiss it. Doing this at the tap (synchronously) beats the item's own focus
@@ -539,8 +548,10 @@ public fun Catalog(
         color = MaterialTheme.colorScheme.surface,
     ) {
         // systemBarsPadding (status + navigation bars) so an edge-to-edge host keeps
-        // the content clear of both bars while the surface fills the whole window.
-        Column(Modifier.fillMaxSize().systemBarsPadding()) {
+        // the content clear of both bars while the surface fills the whole window. A Box
+        // wraps the panes so the full-screen search overlay can sit on top of them.
+        Box(Modifier.fillMaxSize()) {
+            Column(Modifier.fillMaxSize().systemBarsPadding()) {
             // The breadcrumb spanning both panes (two-pane only: in single-pane the
             // per-pane bars with their back arrow already convey position).
             if (isTwoPane) {
@@ -553,6 +564,7 @@ public fun Catalog(
                     showBackButton = showBackButton,
                     onBack = ::backAction,
                     onNavigateToPath = ::navigateToPath,
+                    onSearchClick = ::openSearch,
                 )
             }
             ListDetailPaneScaffold(
@@ -581,12 +593,6 @@ public fun Catalog(
                             onSelectPage = { id ->
                                 selectPageById(id, pagePath.dropLast(1) + listOf(id))
                             },
-                            isSearching = isSearching,
-                            searchEntries = searchEntries,
-                            onSearchEntryClick = ::onSearchEntrySelected,
-                            query = query,
-                            onQueryChange = { query = it },
-                            fieldFocusEnabled = fieldFocusEnabled,
                             highlightedKey = highlightedKey,
                             fadingEdges = options.fadingEdges,
                             listScrollToIndex = listScrollToIndex,
@@ -599,6 +605,7 @@ public fun Catalog(
                             pageFor = { id -> findPage(root, id) },
                             scrollStates = listScrollStates,
                             visitedLevels = visitedListLevels,
+                            onSearchClick = ::openSearch,
                         )
                     }
                 },
@@ -629,10 +636,29 @@ public fun Catalog(
                             pageDirection = pageDirection,
                             pageFor = { id -> findPage(root, id) },
                             scrollStates = detailScrollStates,
+                            onSearchClick = ::openSearch,
                         )
                     }
                 },
             )
+            }
+
+            // The full-screen search overlay, on top of the panes: it slides in and
+            // covers them while open.
+            AnimatedVisibility(
+                visible = searchOpen,
+                enter = fadeIn(tween(180)) + slideInVertically(tween(180)) { it / 16 },
+                exit = fadeOut(tween(150)),
+            ) {
+                FullScreenSearch(
+                    query = query,
+                    onQueryChange = { query = it },
+                    entries = searchEntries,
+                    onEntryClick = ::onSearchEntrySelected,
+                    onClose = ::closeSearch,
+                    placeholder = "Search " + searchScopePage.title,
+                )
+            }
         }
     }
 }

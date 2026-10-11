@@ -32,18 +32,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CornerSize
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
@@ -68,7 +65,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -79,6 +77,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -98,6 +97,7 @@ internal fun BreadcrumbBar(
     showBackButton: Boolean,
     onBack: () -> Unit,
     onNavigateToPath: (List<String>) -> Unit,
+    onSearchClick: () -> Unit,
 ) {
     // currentPath is the shown page's trail below the root: nested once it is
     // non-empty.
@@ -160,6 +160,15 @@ internal fun BreadcrumbBar(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
+            }
+            // Right-aligned search affordance: opens the full-screen search overlay.
+            Spacer(Modifier.weight(1f))
+            IconButton(onClick = onSearchClick) {
+                Icon(
+                    imageVector = Icons.Filled.Search,
+                    contentDescription = "Search",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }
@@ -247,18 +256,15 @@ internal fun AnimatedPageContent(
 }
 
 /**
- * The list pane: the in-list search pill and the parent page's items — its sub-page items
- * and its regular items, in content order (the search results while querying) — and, in
- * single-pane mode, the fixed 56dp title bar the list scrolls under. At the root level
- * the parent is the root page, whose items are the list's top level. Each level's list
- * uses its own [LazyListState] from [scrollStates] (owned by the screen), so a level
- * always comes back at the scroll position it was left at; the first time a level is
- * shown, the list scrolls to the selected page's item instead. The search results use
- * their own throwaway state, so clearing a query returns the level where it was.
+ * The list pane: the parent page's items — its sub-page items and its regular items, in
+ * content order — and, in single-pane mode, the fixed 56dp title bar the list scrolls
+ * under. At the root level the parent is the root page, whose items are the list's top
+ * level. Each level's list uses its own [LazyListState] from [scrollStates] (owned by
+ * the screen), so a level always comes back at the scroll position it was left at; the
+ * first time a level is shown, the list scrolls to the selected page's item instead.
  *
- * The search pill's text field is kept out of the focus tree while [fieldFocusEnabled]
- * is false (launch and pane transitions), so the focus system never restores focus (and
- * the keyboard) to it mid-transition.
+ * The single-pane title bar carries a right-aligned search affordance ([onSearchClick]);
+ * search itself is a full-screen overlay hosted by the screen, not in the pane.
  */
 @Composable
 internal fun ListPane(
@@ -269,12 +275,6 @@ internal fun ListPane(
     parentPage: Page,
     selectedPageId: String?,
     onSelectPage: (String) -> Unit,
-    isSearching: Boolean,
-    searchEntries: List<SearchEntry>,
-    onSearchEntryClick: (SearchEntry) -> Unit,
-    query: String,
-    onQueryChange: (String) -> Unit,
-    fieldFocusEnabled: Boolean,
     highlightedKey: String?,
     fadingEdges: Boolean,
     listScrollToIndex: Int?,
@@ -285,46 +285,39 @@ internal fun ListPane(
     pageFor: (String) -> Page?,
     scrollStates: MutableMap<String, LazyListState>,
     visitedLevels: MutableSet<String>,
+    onSearchClick: () -> Unit,
 ) {
     // The list of this level: each level keeps its own state in [scrollStates] (owned by
     // the screen, so it survives the pane leaving the composition in single-pane mode).
     // Composing the level's list with its state restores the level's scroll position when
     // the user comes back (clamped when the level's items shrank); a level never shown
-    // before starts at the top. The search results use their own throwaway state: they
-    // don't belong to any level's position, so clearing a query returns the level exactly
-    // where it was.
-    val levelState =
+    // before starts at the top.
+    val listState =
         remember(parentPage.id) { scrollStates.getOrPut(parentPage.id) { LazyListState() } }
-    val searchState = remember { LazyListState() }
-    val listState = if (isSearching) searchState else levelState
     // First visit to this level: keep the list pane showing the page currently open in
     // the detail — without this, the offset would be left stale (e.g. scrolled past the
     // end of a shorter list, with the selected item out of view). On a revisit the level's
     // state already holds the position the user left it at, so leave it alone. (The level
     // is marked visited even when a search result selected an item in it: that scroll
     // then owns the position.)
-    LaunchedEffect(parentPage.id, isSearching) {
-        if (isSearching) return@LaunchedEffect
+    LaunchedEffect(parentPage.id) {
         val firstVisit = visitedLevels.add(parentPage.id)
         if (!firstVisit || listScrollToIndex != null) return@LaunchedEffect
         val sel = selectedPageId ?: return@LaunchedEffect
-        // Item 0 is the search pill; the parent's items follow from index 1. The selected
-        // item's position in the parent's lazy list comes from the walk.
-        val index =
+        // The selected item's position in the level's lazy list comes from the walk.
+        val target =
             parentPage.structure.subPages.firstOrNull { it.page.id == sel }?.index
                 ?: return@LaunchedEffect
-        // Item 0 is the search pill; the parent's items follow from index 1.
-        val target = 1 + index
         // The list is recomposed with the new items asynchronously; wait until the target
         // item exists before scrolling to it (same pattern as the detail pane).
-        snapshotFlow { levelState.layoutInfo.totalItemsCount }
+        snapshotFlow { listState.layoutInfo.totalItemsCount }
             .first { it > target }
         // No-op when the item is already on screen, so a restart never fights a scroll
         // the user is in the middle of.
-        if (levelState.layoutInfo.visibleItemsInfo.any { it.index == target }) {
+        if (listState.layoutInfo.visibleItemsInfo.any { it.index == target }) {
             return@LaunchedEffect
         }
-        levelState.animateScrollToItem(target)
+        listState.animateScrollToItem(target)
     }
     // Scroll to a root item a search result selected, once it is laid out.
     LaunchedEffect(listScrollToIndex) {
@@ -360,12 +353,6 @@ internal fun ListPane(
                         state = listState,
                         parentPage = parentPage,
                         isTwoPane = isTwoPane,
-                        isSearching = isSearching,
-                        searchEntries = searchEntries,
-                        onSearchEntryClick = onSearchEntryClick,
-                        query = query,
-                        onQueryChange = onQueryChange,
-                        fieldFocusEnabled = fieldFocusEnabled,
                         fadingEdges = fadingEdges,
                         edge = edge,
                     )
@@ -378,21 +365,14 @@ internal fun ListPane(
                     state = scrollStates[id] ?: LazyListState(),
                     parentPage = page,
                     isTwoPane = isTwoPane,
-                    isSearching = isSearching,
-                    searchEntries = searchEntries,
-                    onSearchEntryClick = onSearchEntryClick,
-                    query = query,
-                    onQueryChange = onQueryChange,
-                    fieldFocusEnabled = fieldFocusEnabled,
                     fadingEdges = fadingEdges,
                     edge = edge,
                 )
             }
-            // The single persistent header: a fixed 56dp bar at the top that never
-            // vanishes and never changes — just the title at a single size. The search
-            // lives in the in-list pill, which simply scrolls behind the bar. In
-            // two-pane mode it is not shown at all: the breadcrumb above the panes
-            // carries the title, and the search pill is a plain in-list item there.
+            // The single-pane header: a fixed 56dp bar at the top (a back chevron when
+            // [showBackButton] is on, then the title, then a right-aligned search
+            // affordance). In two-pane mode it is not shown at all: the breadcrumb above
+            // the panes carries the title and its own search affordance.
             if (!isTwoPane) {
                 Surface(
                     modifier =
@@ -402,33 +382,43 @@ internal fun ListPane(
                             .height(56.dp),
                     color = MaterialTheme.colorScheme.surface,
                 ) {
-                    if (showBackButton) {
-                        Row(
-                            modifier =
-                                Modifier
-                                    .fillMaxSize()
-                                    .padding(end = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
+                    Row(
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .padding(end = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        if (showBackButton) {
                             IconButton(onClick = onBack) {
                                 BackChevron()
                             }
-                            Text(
-                                text = title,
-                                modifier = Modifier.weight(1f),
-                                style = MaterialTheme.typography.titleLarge,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
                         }
-                    } else {
                         Text(
                             text = title,
-                            modifier = Modifier.padding(horizontal = 16.dp),
+                            modifier =
+                                Modifier
+                                    .weight(1f)
+                                    .then(
+                                        if (showBackButton) {
+                                            Modifier
+                                        } else {
+                                            Modifier.padding(start = 16.dp)
+                                        },
+                                    ),
                             style = MaterialTheme.typography.titleLarge,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
+                        // Right-aligned search affordance: opens the full-screen search
+                        // overlay.
+                        IconButton(onClick = onSearchClick) {
+                            Icon(
+                                imageVector = Icons.Filled.Search,
+                                contentDescription = "Search",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                     }
                 }
             }
@@ -437,22 +427,16 @@ internal fun ListPane(
 }
 
 /**
- * The list pane's scrollable content: the search pill, then either the search results
- * (while querying) or [parentPage]'s items in content order. Each sub-page item is its
- * own lazy item — not one group item — so the pane can scroll to the selected item
- * (e.g. after popping up the tree in two-pane, when the item set changes).
+ * The list pane's scrollable content: [parentPage]'s items — its sub-page items and its
+ * regular items, in content order. Each sub-page item is its own lazy item, so the pane
+ * can scroll to the selected item (e.g. after popping up the tree in two-pane, when the
+ * item set changes).
  */
 @Composable
 private fun ListContent(
     state: LazyListState,
     parentPage: Page,
     isTwoPane: Boolean,
-    isSearching: Boolean,
-    searchEntries: List<SearchEntry>,
-    onSearchEntryClick: (SearchEntry) -> Unit,
-    query: String,
-    onQueryChange: (String) -> Unit,
-    fieldFocusEnabled: Boolean,
     fadingEdges: Boolean,
     edge: Dp,
 ) {
@@ -483,66 +467,36 @@ private fun ListContent(
                 bottom = edge,
             ),
     ) {
-        // The search pill: an in-list item at the top of the list pane. In single-pane it
-        // sits below the fixed 56dp header bar (accounted for in the content padding); in
-        // two-pane a little breathing room below the breadcrumb.
-        item {
-            SearchPill(
-                isTwoPane = isTwoPane,
-                query = query,
-                onQueryChange = onQueryChange,
-                focusEnabled = fieldFocusEnabled,
-            )
-        }
-        if (isSearching) {
-            items(searchEntries, key = { it.id }) { entry ->
-                SearchEntryItem(
-                    // An entry match shows the preference's own title with the page's
-                    // trail as its subtitle; a page match shows the page's title, and its
-                    // parent's trail (or summary) as subtitle.
-                    entry = entry.entry,
-                    page = entry.page,
-                    path = entry.path,
-                    icon = entry.icon,
-                    onClick = { onSearchEntryClick(entry) },
-                )
-            }
-            if (searchEntries.isEmpty()) {
-                item {
-                    Text(
-                        text = "No matching pages",
-                        modifier = Modifier.padding(16.dp),
-                    )
-                }
-            }
-        } else {
-            GroupKeys.reset()
-            parentPage.content(this)
-        }
+        // The level's items: its sub-page items and its regular items, in content order.
+        GroupKeys.reset()
+        parentPage.content(this)
     }
 }
 
 /**
- * The MD3-style search pill, an in-list item at the top of the list pane. Owns the text
- * field and its focus state; [query] mirrors the field's text in both directions (typing
- * updates the query; a query change from outside — e.g. a result selection clearing it —
- * empties the field).
- *
- * While [focusEnabled] is false the field is kept out of the focus tree entirely, so
- * the focus system does not restore focus (and show the keyboard) on it during a pane
- * transition.
+ * The full-screen search overlay, hosted by the screen on top of the panes. A full-width
+ * search field sits in a fixed top bar (back chevron + field + clear); the matching pages
+ * and preference entries are listed below. Selecting a result or the back chevron closes
+ * the overlay (the screen navigates or dismisses). [query] mirrors the field's text in
+ * both directions, and the field takes focus (and the keyboard shows) when the overlay
+ * opens. [placeholder] is the field's hint while the query is empty; the screen passes a
+ * value naming the page being searched (e.g. "Search Theme") so the scope is clear.
  */
 @Composable
-private fun SearchPill(
-    isTwoPane: Boolean,
+internal fun FullScreenSearch(
     query: String,
     onQueryChange: (String) -> Unit,
-    focusEnabled: Boolean,
+    entries: List<SearchEntry>,
+    onEntryClick: (SearchEntry) -> Unit,
+    onClose: () -> Unit,
+    placeholder: String,
 ) {
     val textFieldState = rememberTextFieldState()
     // The query as seen by the long-lived collector below: a plain closure would capture
     // the value from the composition that started the effect, so read it live.
     val currentQuery by rememberUpdatedState(query)
+    val fieldRequester = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
     // Field -> query: the field is the source of truth while typing. The collector must
     // NOT restart when the query changes — restarting it mid-IME-commit would re-emit a
     // stale text and race the IME's composing region (the "last character keeps being
@@ -561,100 +515,110 @@ private fun SearchPill(
             textFieldState.edit { replace(0, length, "") }
         }
     }
-    val focusManager = LocalFocusManager.current
-    var fieldFocused by remember { mutableStateOf(false) }
+    // Take focus (and show the keyboard) when the overlay opens.
+    LaunchedEffect(Unit) {
+        fieldRequester.requestFocus()
+        keyboard?.show()
+    }
 
-    Column(Modifier.fillMaxWidth()) {
-        if (isTwoPane) {
-            Spacer(Modifier.height(8.dp))
-        }
-        // The results are shown inline in this pane, so a plain text field is used
-        // instead of the state-based SearchBarDefaults.InputField, whose touch-mode
-        // focus coupling would force-expand the bar.
-        Surface(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .height(48.dp)
-                    .padding(horizontal = LocalItemTheme.current.horizontalSpacing),
-            shape = RoundedCornerShape(24.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant,
-        ) {
-            Row(
-                modifier = Modifier.fillMaxSize().padding(start = 8.dp, end = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
+    Box(
+        Modifier
+            .fillMaxSize()
+            .systemBarsPadding()
+            .background(MaterialTheme.colorScheme.surface),
+    ) {
+        Column(Modifier.fillMaxSize()) {
+            // The fixed top bar: back chevron, the full-width search field, and (while a
+            // query is entered) a clear button.
+            Surface(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                color = MaterialTheme.colorScheme.surface,
             ) {
-                Box(
-                    // A fixed-width tappable slot; the icon is centered in it, so its
-                    // edge lands 16.dp from the pill edge (8.dp pill padding + 8.dp
-                    // within the slot).
+                Row(
                     modifier =
                         Modifier
-                            .size(40.dp)
-                            .clip(RoundedCornerShape(20.dp))
-                            .then(
-                                if (fieldFocused) {
-                                    Modifier.clickable {
-                                        focusManager.clearFocus(force = true)
-                                    }
-                                } else {
-                                    Modifier
-                                },
-                            ),
-                    contentAlignment = Alignment.Center,
+                            .fillMaxSize()
+                            .padding(end = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    if (fieldFocused) {
-                        Icon(
-                            imageVector = Icons.Filled.ArrowBack,
-                            contentDescription = "Dismiss search",
-                            modifier = Modifier.size(24.dp),
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Filled.Search,
-                            contentDescription = null,
-                            modifier = Modifier.size(24.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                    IconButton(onClick = onClose) {
+                        BackChevron()
                     }
-                }
-                Spacer(Modifier.width(8.dp))
-                Box(Modifier.weight(1f)) {
-                    if (query.isEmpty()) {
-                        Text(
-                            text = "Search",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.align(Alignment.CenterStart),
-                        )
-                    }
-                    BasicTextField(
-                        state = textFieldState,
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .then(
-                                    if (focusEnabled) {
-                                        Modifier
-                                    } else {
-                                        Modifier.focusProperties { canFocus = false }
-                                    },
-                                )
-                                .onFocusChanged { fieldFocused = it.isFocused },
-                        textStyle =
-                            MaterialTheme.typography.bodyLarge.copy(
+                    Box(Modifier.weight(1f)) {
+                        if (query.isEmpty()) {
+                            Text(
+                                text = placeholder,
+                                style = MaterialTheme.typography.titleLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            ),
-                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                        lineLimits = TextFieldLineLimits.SingleLine,
-                    )
-                }
-                if (query.isNotEmpty()) {
-                    IconButton(onClick = { onQueryChange("") }) {
-                        Icon(
-                            imageVector = Icons.Filled.Close,
-                            contentDescription = "Clear",
+                                modifier =
+                                    Modifier
+                                        .align(Alignment.CenterStart)
+                                        .padding(horizontal = 8.dp),
+                            )
+                        }
+                        BasicTextField(
+                            state = textFieldState,
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .focusRequester(fieldRequester)
+                                    .padding(horizontal = 8.dp),
+                            textStyle =
+                                MaterialTheme.typography.titleLarge.copy(
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                ),
+                            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                            lineLimits = TextFieldLineLimits.SingleLine,
                         )
+                    }
+                    if (query.isNotEmpty()) {
+                        IconButton(onClick = { onQueryChange("") }) {
+                            Icon(
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = "Clear",
+                            )
+                        }
+                    }
+                }
+            }
+            // The results: the matching pages and preference entries, or a hint while the
+            // query is empty.
+            LazyColumn(
+                state = remember { LazyListState() },
+                contentPadding = PaddingValues(vertical = 8.dp),
+            ) {
+                if (query.isEmpty()) {
+                    item {
+                        Text(
+                            text = "Search items",
+                            modifier = Modifier.padding(16.dp),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                } else {
+                    items(entries, key = { it.id }) { entry ->
+                        SearchEntryItem(
+                            // An entry match shows the preference's own title with the
+                            // page's trail as its subtitle; a page match shows the
+                            // page's title, and its parent's trail (or summary) as
+                            // subtitle.
+                            entry = entry.entry,
+                            page = entry.page,
+                            path = entry.path,
+                            icon = entry.icon,
+                            onClick = { onEntryClick(entry) },
+                        )
+                    }
+                    if (entries.isEmpty()) {
+                        item {
+                            Text(
+                                text = "No matching items",
+                                modifier = Modifier.padding(16.dp),
+                            )
+                        }
                     }
                 }
             }
@@ -665,8 +629,10 @@ private fun SearchPill(
 /**
  * The detail pane: the selected page's items — its sub-page items and its regular items,
  * in content order — and, in single-pane mode, the fixed 56dp compact bar (back arrow +
- * title) the list scrolls under. Each page's list uses its own [LazyListState] from
- * [scrollStates] (owned by the screen), so a page always comes back at the scroll
+ * title + a right-aligned search affordance, [onSearchClick]) the list scrolls under. The
+ * search affordance is what carries search on subpages: in single-pane a subpage is shown
+ * in this pane, so its bar is the only one on screen. Each page's list uses its own
+ * [LazyListState] from [scrollStates] (owned by the screen), so a page always comes back at the scroll
  * position it was left at (clamped when its items shrank; the top when it has not been
  * shown before), plus the scroll-to-item effect for a selected search result.
  */
@@ -686,6 +652,7 @@ internal fun DetailPane(
     pageDirection: PageDirection,
     pageFor: (String) -> Page?,
     scrollStates: MutableMap<String, LazyListState>,
+    onSearchClick: () -> Unit,
 ) {
     // The list of the current page: each page keeps its own state in [scrollStates]
     // (owned by the screen, so it survives the pane leaving the composition in
@@ -758,7 +725,7 @@ internal fun DetailPane(
                         modifier =
                             Modifier
                                 .fillMaxSize()
-                                .padding(horizontal = 8.dp),
+                                .padding(start = 8.dp, end = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         IconButton(onClick = onBack) {
@@ -771,6 +738,15 @@ internal fun DetailPane(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
+                        // Right-aligned search affordance: opens the full-screen search
+                        // overlay, scoped to this page and below.
+                        IconButton(onClick = onSearchClick) {
+                            Icon(
+                                imageVector = Icons.Filled.Search,
+                                contentDescription = "Search",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                     }
                 }
             }
