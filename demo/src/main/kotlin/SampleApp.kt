@@ -27,7 +27,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import net.slions.compose.toolkit.Catalog
+import net.slions.compose.toolkit.CatalogOptions
 import net.slions.compose.toolkit.ProvidePreferenceLocals
 import net.slions.compose.toolkit.ProvidePreferenceTheme
 
@@ -65,6 +67,12 @@ fun SampleApp() {
                         // a back chevron: at the root of the tree it closes the activity.
                         onBack = { (context as? Activity)?.finish() },
                         showBackButton = true,
+                        // The pane gutter follows the Theme page's "Spacing" slider, so
+                        // it can be tuned (down to 0dp, flush) at runtime.
+                        options =
+                            CatalogOptions(
+                                paneGap = (themeValues.paneGapDp ?: DEFAULT_PANE_GAP_DP).dp,
+                            ),
                     )
                     // The sheet, hosted in this activity over the full-screen screen.
                     if (sheetOpen) {

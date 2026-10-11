@@ -140,8 +140,8 @@ internal fun quantizedAdaptiveInfo(
 }
 
 /**
- * The pane scaffold directive of the screen: the two-pane activation and the hinge
- * handling are the documented fold workarounds, exposed via [options] (see
+ * The pane scaffold directive of the screen: the two-pane activation, the hinge handling
+ * and the pane gap are the documented workarounds, exposed via [options] (see
  * [CatalogOptions]).
  *
  * A pure function so it can be memoized (e.g. in `remember`) and unit-tested.
@@ -166,5 +166,8 @@ internal fun paneScaffoldDirective(
         }
     // A host that must never split (a bottom sheet, a dialog) forces a single partition
     // so the screen stays single-pane at any width.
-    return if (singlePaneOnly) base.copy(maxHorizontalPartitions = 1) else base
+    val directive = if (singlePaneOnly) base.copy(maxHorizontalPartitions = 1) else base
+    // The material3 recommended directives carry a 24dp gutter between the panes; the
+    // option overrides it (0.dp makes the panes sit flush).
+    return directive.copy(horizontalPartitionSpacerSize = options.paneGap)
 }

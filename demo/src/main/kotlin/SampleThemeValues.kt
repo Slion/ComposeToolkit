@@ -48,6 +48,8 @@ import net.slions.compose.toolkit.Store
  * @param tintFactorPercent how strongly the accent tints the neutral roles (background,
  *   surfaces, text), as a percentage of the seed's chroma; null = [DEFAULT_TINT_FACTOR_PERCENT].
  * @param fontFamily one of [FONT_FAMILIES]; null = [DEFAULT_FONT].
+ * @param paneGapDp the gutter between the two panes of the adaptive two-pane layout, in dp;
+ *   null = [DEFAULT_PANE_GAP_DP].
  */
 @Immutable
 data class SampleThemeValues(
@@ -57,6 +59,7 @@ data class SampleThemeValues(
     val fontSizePercent: Int? = null,
     val tintFactorPercent: Int? = null,
     val fontFamily: String? = null,
+    val paneGapDp: Int? = null,
 ) {
     companion object {
         /** The platform default font. */
@@ -117,6 +120,12 @@ val LocalSampleThemeValues = staticCompositionLocalOf { SampleThemeValues() }
 internal const val DEFAULT_CORNER_RADIUS_DP = 12
 
 /**
+ * The default pane gap in dp (the gutter between the two panes of the adaptive layout);
+ * the material3 recommended directives carry a 24dp spacer there.
+ */
+internal const val DEFAULT_PANE_GAP_DP = 24
+
+/**
  * The default neutral-tint factor as a percentage: how strongly the seed hue tints the
  * neutral roles (background, surfaces, text). 5% is the standard M3 dynamic factor; higher
  * values push the accent into the neutrals.
@@ -134,6 +143,7 @@ private const val KEY_CORNER_RADIUS = "sample.theme.cornerRadius"
 private const val KEY_FONT_SIZE = "sample.theme.fontSize"
 private const val KEY_TINT_FACTOR = "sample.theme.tintFactor"
 private const val KEY_FONT_FAMILY = "sample.theme.fontFamily"
+private const val KEY_PANE_GAP = "sample.theme.paneGap"
 
 /**
  * Rebuilds a [SampleThemeValues] from a [Store] store. Unset or invalid entries fall
@@ -149,6 +159,7 @@ private fun SampleThemeValues.Companion.fromPrefs(prefs: Store): SampleThemeValu
         fontSizePercent = prefs.getInt(KEY_FONT_SIZE),
         tintFactorPercent = prefs.getInt(KEY_TINT_FACTOR),
         fontFamily = prefs.getString(KEY_FONT_FAMILY),
+        paneGapDp = prefs.getInt(KEY_PANE_GAP),
     )
 
 private fun Store.getString(key: String): String? = this[key]
@@ -163,6 +174,7 @@ private fun SampleThemeValues.writeTo(prefs: MutableStore) {
     prefs[KEY_FONT_SIZE] = fontSizePercent
     prefs[KEY_TINT_FACTOR] = tintFactorPercent
     prefs[KEY_FONT_FAMILY] = fontFamily
+    prefs[KEY_PANE_GAP] = paneGapDp
 }
 
 /**

@@ -44,7 +44,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.dp
 import androidx.window.core.layout.WindowSizeClass
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -110,6 +112,12 @@ public class CatalogOptions(
      * the list content inset by their length so it scrolls under them).
      */
     public val fadingEdges: Boolean = true,
+    /**
+     * The gutter between the two panes in the two-pane layout. The material3 recommended
+     * directives carry a 24dp spacer there; 0.dp makes the panes sit flush against each
+     * other (the rows keep their own 16dp edge padding).
+     */
+    public val paneGap: Dp = 24.dp,
 )
 
 /**
@@ -157,7 +165,7 @@ public class CatalogOptions(
  * a host that must never split into a list + detail (e.g. a bottom sheet, a dialog)
  * stays single-pane even when it is wide; the list navigates to the detail and back.
  * @param options Tunables for the fold/adaptive workarounds (hinge policy, two-pane
- * width class, pane fading edges); see [CatalogOptions].
+ * width class, pane fading edges, pane gap); see [CatalogOptions].
  */
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable

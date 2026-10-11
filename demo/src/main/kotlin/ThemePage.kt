@@ -133,6 +133,23 @@ fun themePage(
                 )
             }
         }
+
+        section(key = "theme_spacing_category", title = "Spacing")
+        group(key = "theme_spacing_group") {
+            item(title = "Pane gap") {
+                LiveItemSlider(
+                    title = "Pane gap",
+                    value = (values.paneGapDp ?: DEFAULT_PANE_GAP_DP).toFloat(),
+                    onValueChange = { onValuesChange(values.copy(paneGapDp = it.toInt())) },
+                    valueRange = 0f..48f,
+                    // 4 dp steps over 0..48 = 12 segments, so 11 intermediate stops.
+                    valueSteps = (48 - 0) / 4 - 1,
+                    valueText = { "${it.toInt()} dp" },
+                    live = true,
+                    icon = { MaterialSymbol.Outlined(icon = "splitscreen") },
+                )
+            }
+        }
     }
 }
 

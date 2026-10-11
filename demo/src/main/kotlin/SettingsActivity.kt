@@ -22,7 +22,9 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.unit.dp
 import net.slions.compose.toolkit.Catalog
+import net.slions.compose.toolkit.CatalogOptions
 import net.slions.compose.toolkit.Page
 import net.slions.compose.toolkit.ProvidePreferenceLocals
 import net.slions.compose.toolkit.ProvidePreferenceTheme
@@ -82,6 +84,12 @@ private fun SettingsActivityScreen(onBack: () -> Unit) {
                         // tree both close the activity.
                         onBack = onBack,
                         showBackButton = true,
+                        // Same theme-driven pane gutter as the main activity: both
+                        // Catalogs read the same store, so the slider in one updates both.
+                        options =
+                            CatalogOptions(
+                                paneGap = (themeValues.paneGapDp ?: DEFAULT_PANE_GAP_DP).dp,
+                            ),
                     )
                 }
             }
